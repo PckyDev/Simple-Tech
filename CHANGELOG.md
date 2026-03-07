@@ -10,7 +10,12 @@
 - Gave first-time players a starter `primitive_hammer` and made the replacement recipe use `raw_iron + stick`.
 - Split the primitive loop into clearer tutorial stages, including an explicit "find and hold the Primitive Hammer" step.
 - Added `/st objective walkthrough` for a full guided starter sequence.
-- Added working manual crafting-table interactions for Simple Tech crafting recipes so starter crafts like `primitive_hammer` no longer depend on the vanilla crafting-grid UI.
+- Reworked Simple Tech crafting to use the normal 3x3 crafting-table grid with prepare/craft event handling for custom item outputs.
+- Rebuilt all player crafting definitions around meaningful 3x3 silhouettes so shaped recipes now visually match what they craft, including a real hammer pattern for `primitive_hammer`.
+- Rebalanced the new shaped crafting pass so early progression stays affordable: starter plate, casing, and coil crafts now return better yields, and several machine-kit silhouettes use fewer expensive ingredients.
+- Added automatic player-tier promotion from real progression milestones so recipe unlock tiers now advance naturally from starter completion through industrial and electrolyzer stages.
+- Added player-craftable machine kit items for both basic and advanced machines, with place-to-register and break-to-return behavior.
+- Rebalanced machine processing so automation now pays off faster, with stronger press and mixer yields, larger slurry and gel batches, cheaper assembler loops, and cheaper late-game fabrication cycles.
 
 ### Feature Pass - Migration Placeholder and Legacy Item Normalization
 - Expanded schema migration handling into step-based placeholder tracking with applied-step status fields.

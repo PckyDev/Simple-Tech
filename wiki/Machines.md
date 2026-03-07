@@ -2,6 +2,8 @@
 
 Simple Tech machines are represented by vanilla blocks plus stored per-location state.
 
+Players can now craft machine kits and place them directly. Admin `/stmachine set` and `/stadvanced set` still work for setup/testing, but normal progression no longer depends on admin registration.
+
 ## Basic Machines
 
 ### Crusher
@@ -21,11 +23,12 @@ Highlights:
 Purpose:
 
 - compresses ingots/components into crafted parts
+- gives clear early-game throughput gains over manual plate and coil crafting
 
 Highlights:
 
-- plate production
-- component compression
+- doubled plate production from `iron_ingot -> iron_plate x2`
+- doubled coil production from `copper_wire -> copper_coil x2`
 - speed upgrade support
 
 ### Mixer
@@ -38,6 +41,7 @@ Highlights:
 
 - 2-input recipes
 - 3-input support
+- better early automation yields for `machine_casing` and `heat_briquette`
 - `single` and `batch` modes
 - wrench-based mode toggle
 
@@ -50,6 +54,7 @@ Purpose:
 Highlights:
 
 - optional bonus output chance
+- improved `raw_copper_chunk -> copper_wire x3` throughput
 - fuel efficiency interaction through heat
 - recyclable `slag` output path
 
@@ -64,6 +69,7 @@ Purpose:
 Highlights:
 
 - pattern memory
+- quicker industrial part assembly after the throughput balance pass
 - queue handling
 - capacity upgrades
 
@@ -75,7 +81,7 @@ Purpose:
 
 Highlights:
 
-- `slag` -> `slag_slurry`
+- `slag` -> `slag_slurry x2`
 - `slag_slurry` -> `refined_flux`
 - byproduct capture such as `spent_filter`
 
@@ -88,6 +94,7 @@ Purpose:
 Highlights:
 
 - split outputs
+- larger `electrolyte_gel` batches for Tier 3 ramp-up
 - `ion_fragment` byproducts
 - heat and efficiency interaction
 
@@ -101,6 +108,7 @@ Highlights:
 
 - expensive inputs
 - quality bonus system
+- faster late-game cycles after the automation balance pass
 - late-game precision components
 
 ## Common Machine Features
@@ -113,6 +121,13 @@ Highlights:
 - ownership and access enforcement
 - persistence and recovery support
 - audit and debug visibility
+
+## Machine Kit Placement
+
+- Craft the machine kit item.
+- Place it like a normal block.
+- The placed block auto-registers as the matching Simple Tech machine.
+- Breaking the machine returns the matching kit item, unless normal break protection blocks the action.
 
 ## Machine Control Commands
 

@@ -37,6 +37,17 @@ This document lists default item IDs registered in `st_01_items.sk`.
 - `reinforced_casing` - Reinforced Casing
 - `thermal_cell` - Thermal Cell
 
+## Machine Kits
+
+- `crusher_kit` - Crusher Kit
+- `press_kit` - Press Kit
+- `mixer_kit` - Mixer Kit
+- `smelter_kit` - Smelter Kit
+- `assembler_kit` - Assembler Kit
+- `refinery_kit` - Refinery Kit
+- `electrolyzer_kit` - Electrolyzer Kit
+- `fabricator_kit` - Fabricator Kit
+
 ## Upgrades
 
 - `speed_upgrade_1` - Speed Upgrade I

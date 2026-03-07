@@ -77,11 +77,11 @@ Recipe ID:
 
 Important note:
 
-- this uses the Simple Tech manual crafting flow, not the vanilla crafting table grid
-- hold `raw_iron` in your hand
-- keep `stick` somewhere in your inventory
-- sneak-right-click a crafting table
-- because it is `crafting_shaped`, the documented order matters: `raw_iron` first, `stick` second
+- open a crafting table
+- place the hammer shape:
+	- top row: `raw_iron`, `raw_iron`, empty
+	- middle row: empty, `stick`, empty
+	- bottom row: empty, `stick`, empty
 
 If you are unsure, use:
 
@@ -113,7 +113,7 @@ Check these in order:
 2. are you looking for the item ID `primitive_hammer` specifically?
 3. did you lose it and need a replacement?
 4. did you inspect the recipe with `/strecipe view crafting_shaped primitive_hammer_recipe`?
-5. are you using the Simple Tech manual crafting flow instead of the vanilla crafting-table UI?
+5. are you placing the full hammer pattern instead of only two ingredients?
 
 If you are testing as admin and just want one immediately:
 
@@ -157,6 +157,30 @@ Once the starter objectives are done, the player should move toward:
 - creating `machine_casing`
 - learning fuel and heat buffers
 - building the first mechanical processing chain
+
+Completing the starter track now also promotes you into Tier 1 automatically.
+
+## First Machine Placement
+
+Basic machines are now player-craftable.
+
+Craft one of these kits at a crafting table, then place it like a normal block:
+
+- `crusher_kit` = crusher-frame pattern with `machine_casing` and `iron_plate`
+- `press_kit` = stacked press pattern with `iron_plate` and `machine_casing`
+- `mixer_kit` = paddle pattern with `copper_wire` and `machine_casing`
+- `smelter_kit` = furnace-style pattern with `iron_plate`, `heat_briquette`, and `machine_casing`
+
+Advanced machine progression continues with machine kits as well:
+
+- `reinforced_casing` = braced casing pattern with `machine_casing`, `iron_plate`, and `heat_briquette`
+- `control_core` = light coil-spine pattern around `linker_tool`
+- `assembler_kit` = reinforced frame around a `control_core`
+- `refinery_kit` = heated plated refinery frame
+- `electrolyzer_kit` = charged cross pattern with `copper_coil`, `refined_flux`, and `reinforced_casing`
+- `fabricator_kit` = dense mesh-and-gel fabrication matrix around a reinforced core
+
+As you craft and carry these milestone parts, Simple Tech now promotes your player tier automatically.
 
 ## Tips for Server Owners
 

@@ -676,6 +676,84 @@ function st_player_holding_custom_item(p: player, id: text) :: boolean:
 		return true
 	return false
 
+function st_progress_tier(p: player) :: number:
+	set {_u} to uuid of {_p}
+	set {_tier} to {st.player::%{_u}%::tier}
+	if {_tier} is not set:
+		set {_tier} to 0
+		set {st.player::%{_u}%::tier} to 0
+	return {_tier}
+
+function st_progress_target_tier(p: player) :: number:
+	set {_tier} to 0
+	set {_u} to uuid of {_p}
+	if {st.player::%{_u}%::objective::complete} is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "machine_casing", 1) is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "copper_coil", 1) is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "crusher_kit", 1) is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "press_kit", 1) is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "mixer_kit", 1) is true:
+		set {_tier} to 1
+	if st_player_has_custom_item({_p}, "smelter_kit", 1) is true:
+		set {_tier} to 1
+
+	if st_player_has_custom_item({_p}, "reinforced_casing", 1) is true:
+		set {_tier} to 2
+	if st_player_has_custom_item({_p}, "control_core", 1) is true:
+		set {_tier} to 2
+	if st_player_has_custom_item({_p}, "treated_plate", 1) is true:
+		set {_tier} to 2
+	if st_player_has_custom_item({_p}, "refined_flux", 1) is true:
+		set {_tier} to 2
+	if st_player_has_custom_item({_p}, "assembler_kit", 1) is true:
+		set {_tier} to 2
+	if st_player_has_custom_item({_p}, "refinery_kit", 1) is true:
+		set {_tier} to 2
+
+	if st_player_has_custom_item({_p}, "electrolyzer_kit", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "charged_mesh", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "electrolyte_gel", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "fabricator_kit", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "fabrication_matrix", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "precision_lens", 1) is true:
+		set {_tier} to 3
+	if st_player_has_custom_item({_p}, "thermal_cell", 1) is true:
+		set {_tier} to 3
+	return {_tier}
+
+function st_progress_promotion_text(tier: number) :: text:
+	if {_tier} is 1:
+		return "Tier 1 unlocked: you can now build your first machine components and basic machine kits."
+	if {_tier} is 2:
+		return "Tier 2 unlocked: reinforced casings, control systems, and industrial machine kits are now within reach."
+	if {_tier} >= 3:
+		return "Tier 3 unlocked: advanced power-processing chains and fabricator-grade components are now open."
+	return "Progress tier updated."
+
+function st_progress_try_promote(p: player):
+	set {_current} to st_progress_tier({_p})
+	set {_target} to st_progress_target_tier({_p})
+	if {_target} <= {_current}:
+		stop
+	set {st.player::%uuid of {_p}%::tier} to {_target}
+	st_message_ok({_p}, "%st_progress_promotion_text({_target})%")
+	if {_target} is 1:
+		st_message({_p}, "Next milestone: craft `machine_casing`, then place your first basic machine kit.")
+	else if {_target} is 2:
+		st_message({_p}, "Next milestone: craft `assembler_kit`, `refinery_kit`, or step into electrolyzer prep.")
+	else if {_target} >= 3:
+		st_message({_p}, "Next milestone: turn advanced materials into `fabricator_kit` and late-game precision outputs.")
+
 function st_objective_text(stage: number) :: text:
 	if {_stage} is 1:
 		return "Collect &eraw iron&7 (x1)."
@@ -818,6 +896,7 @@ function st_objective_try_advance(p: player):
 		if {st.player::%{_u}%::objective::progressViewed} is true:
 			st_objective_set_stage({_p}, 6)
 			set {st.player::%{_u}%::objective::complete} to true
+			st_progress_try_promote({_p})
 			st_message_ok({_p}, "Starter objectives complete. You are ready for Tier 1 machine loops.")
 			stop
 
@@ -837,4 +916,5 @@ on join:
 every 100 ticks:
 	loop all players:
 		st_objective_try_advance(loop-player)
+		st_progress_try_promote(loop-player)
 		st_objective_hint_tick(loop-player)

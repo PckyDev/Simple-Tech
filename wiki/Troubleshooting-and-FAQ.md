@@ -12,9 +12,10 @@ Start here:
 
 If it is missing and you need a replacement:
 
-- hold `raw_iron` in your hand
-- keep `stick` in your inventory
-- sneak-right-click a crafting table
+- open a crafting table
+- place `raw_iron`, `raw_iron`, empty
+- place empty, `stick`, empty
+- place empty, `stick`, empty
 - recipe ID: `primitive_hammer_recipe`
 - inspect it with `/strecipe view crafting_shaped primitive_hammer_recipe`
 
@@ -48,23 +49,15 @@ Use:
 Examples:
 
 - `/strecipe view crafting_shaped primitive_hammer_recipe`
-- `/strecipe view crafting_shapeless iron_plate_manual`
+- `/strecipe view crafting_shaped iron_plate_manual`
 
 ## What does `crafting_shaped` mean here?
 
-In the recipe registry, `crafting_shaped` means the ingredient order matters.
+In the recipe registry, `crafting_shaped` means the exact 3x3 pattern matters.
 
 Example:
 
-- `primitive_hammer_recipe` = hold `raw_iron`, carry `stick`, then sneak-right-click a crafting table
-
-## What does `crafting_shapeless` mean here?
-
-It means the ingredients only need to be present together. Order does not matter.
-
-Example:
-
-- `iron_plate_manual` = `crushed_iron` + `crushed_iron`
+- `primitive_hammer_recipe` = place the full hammer silhouette in the crafting table grid
 
 ## Which pages should I read first?
 

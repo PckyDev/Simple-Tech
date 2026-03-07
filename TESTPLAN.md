@@ -18,7 +18,6 @@ This document tracks the current manual validation checklist for Simple Tech.
 
 - Run `/strecipe validate` and confirm no invalid entries are reported.
 - Test at least one recipe from each category:
-  - `crafting_shapeless`
   - `crafting_shaped`
   - `machine_crusher`
   - `machine_press`
@@ -27,18 +26,27 @@ This document tracks the current manual validation checklist for Simple Tech.
   - `machine_assembler`
 - Confirm 2-input and 3-input machine recipes match the expected output.
 - Confirm cached lookup behavior still returns the same recipe after `/stadmin reload-state recipes`.
-- Confirm Simple Tech crafting recipes work through sneak-right-clicking a crafting table while holding the first ingredient and carrying the second.
+- Confirm Simple Tech crafting recipes appear and complete through the normal 3x3 crafting-table grid.
+- Confirm `primitive_hammer_recipe` only matches the full hammer silhouette.
+- Confirm `iron_plate_manual` only matches the 2x2 crushed-iron plate pattern.
+- Confirm recipes with blanks fail if extra items are placed in required empty cells.
+- Confirm each machine kit recipe creates the expected placeable machine item.
+- Confirm finishing the starter objective track promotes the player to Tier 1.
+- Confirm obtaining `reinforced_casing` or `control_core` promotes the player to Tier 2.
+- Confirm obtaining `electrolyzer_kit`, `charged_mesh`, or `electrolyte_gel` promotes the player to Tier 3.
 
 ## 3) Machine Chain Tests
 
 - Primitive loop: raw iron -> crushed iron -> iron plate.
-- Mechanical loop: crusher -> press -> mixer.
-- Smelter loop: crushed input -> smelter output -> optional `slag` recovery path.
-- Advanced loop: assembler queue with at least two valid recipes.
-- Refinery loop: `slag` -> `slag_slurry` -> `refined_flux`, and confirm `spent_filter` appears from the separation stage.
+- Mechanical loop: crusher -> press -> mixer, and confirm the press returns `iron_plate x2` and `copper_coil x2` while the mixer returns `machine_casing x2` and `heat_briquette x3`.
+- Smelter loop: crushed input -> smelter output -> optional `slag` recovery path, and confirm `raw_copper_chunk` now returns `copper_wire x3`.
+- Advanced loop: assembler queue with at least two valid recipes, and confirm the reduced assembly durations/fuel costs apply for `wrench_assembly`, `meter_assembly`, and one Tier 2 or Tier 3 assembly.
+- Place each basic machine kit and confirm the block auto-registers as the matching machine.
+- Break each placed machine and confirm the correct machine kit is returned.
+- Refinery loop: `slag` -> `slag_slurry` -> `refined_flux`, and confirm prep now returns `slag_slurry x2`, the cheaper separation/treating timings complete correctly, and `spent_filter` appears from the separation stage.
 - Fuel loop: craft `heat_briquette`, craft `thermal_cell`, and confirm their fuel buffers exceed coal/blaze-rod values.
-- Electrolyzer loop: process `slag_slurry` and `copper_coil`, then confirm both main output and `ion_fragment` byproduct appear.
-- Fabricator loop: craft `fabrication_matrix` and repeat until at least one `pristine_matrix` quality-bonus result appears.
+- Electrolyzer loop: process `slag_slurry` and `copper_coil`, then confirm `electrolyte_gel x2`, `charged_mesh x1`, and `ion_fragment` byproducts appear.
+- Fabricator loop: craft `fabrication_matrix` and `precision_lens`, confirm the shorter advanced timings apply, and repeat until at least one `pristine_matrix` quality-bonus result appears.
 - Logistics loop: machine output -> linked buffer -> linked machine.
 
 ## 4) GUI Interaction Tests

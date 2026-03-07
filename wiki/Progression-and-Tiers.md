@@ -24,6 +24,7 @@ Focus:
 - first placeable machines
 - fuel-powered processing
 - first automation hooks
+- noticeable yield gains over primitive hand crafting
 
 Key content:
 
@@ -41,6 +42,7 @@ Focus:
 - multi-step production chains
 - upgraded materials
 - byproducts and recycling
+- cheaper and faster staged refinery processing
 
 Key content:
 
@@ -59,6 +61,7 @@ Focus:
 - routing and filters
 - efficiency optimization
 - longer advanced processing
+- stronger gel, mesh, and fabricator throughput
 
 Key content:
 
@@ -112,9 +115,21 @@ Key content:
 ## How Players Usually Advance
 
 1. Primitive conversion
-2. Basic machines
-3. Fuel management
-4. Item components and casings
-5. Advanced machine registration
-6. Routing and buffers
-7. Tier 3 precision chains
+2. Complete the starter track to unlock Tier 1
+3. Craft `machine_casing`, `copper_coil`, and your first basic machine kits
+4. Produce `reinforced_casing` or `control_core` to unlock Tier 2
+5. Build `assembler_kit`, `refinery_kit`, and `electrolyzer_kit`
+6. Build or carry electrolyzer-grade parts to unlock Tier 3
+7. Push into `fabricator_kit` and late-game precision chains
+
+## Automatic Tier Unlocks
+
+Simple Tech now promotes players automatically as they hit real milestones.
+
+- Tier 1: finish the starter objective track or carry first machine-loop parts like `machine_casing`
+- Tier 2: obtain industrial parts like `reinforced_casing`, `control_core`, `treated_plate`, or `refined_flux`
+- Tier 3: obtain electrolyzer/fabricator-stage parts like `electrolyzer_kit`, `charged_mesh`, `electrolyte_gel`, or `fabrication_matrix`
+
+This keeps recipe unlocks aligned with actual progress instead of requiring manual admin intervention.
+
+It also means each new tier now feels better immediately: Tier 1 machines outscale manual crafting, Tier 2 refinement chains waste less fuel, and Tier 3 processing produces larger advanced-material batches.

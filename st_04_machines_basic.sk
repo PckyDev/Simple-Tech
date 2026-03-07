@@ -610,9 +610,26 @@ on right click:
 
 	st_message_warn(player, "Unknown machine type at this block.")
 
+on place:
+	if event-block is set:
+		set {_itemId} to st_item_id(event-item)
+		if {_itemId} is "":
+			stop
+		if st_machine_kit_is_advanced({_itemId}) is true:
+			stop
+		set {_machine} to st_machine_kit_machine_type({_itemId})
+		if {_machine} is "":
+			stop
+		st_machine_basic_register(event-block, {_machine})
+		st_access_set_owner(event-block, player)
+		st_message_ok(player, "%{_machine}% placed and registered.")
+		st_audit_log("%player% placed basic machine %{_machine}% at %event-block%")
+
 on break:
 	if event-block is set:
 		if st_machine_basic_exists(event-block) is true:
+			set {_machine} to {st.machine::%st_machine_basic_key(event-block)%::type}
+			set {_kitId} to st_machine_kit_id_from_machine({_machine})
 			if player is set:
 				if st_access_require_break(player, event-block) is false:
 					cancel event
@@ -628,8 +645,15 @@ on break:
 						stop
 			st_audit_log("%player% broke basic machine at %event-block%")
 			st_machine_basic_unregister(event-block)
+			cancel event
+			set block at event-block to air
+			if {_kitId} is not "":
+				if player is set:
+					st_item_give(player, {_kitId}, 1)
+				else:
+					drop st_item_build({_kitId}, 1) at location of event-block
 			if player is set:
-				st_message_warn(player, "Simple Tech machine removed.")
+				st_message_warn(player, "Simple Tech machine removed and returned as %{_kitId}%.")
 
 command /stmachine [<text>] [<text>]:
 	trigger:

@@ -43,6 +43,66 @@ function st_items_register_defaults():
 	st_item_define("tech_wrench", blaze rod, "Tech Wrench", 1, "common", "Used to configure machine modes.")
 	st_item_define("linker_tool", stick, "Linker Tool", 1, "uncommon", "Links compatible machines and buffers.")
 	st_item_define("status_meter", clock, "Status Meter", 1, "uncommon", "Reads machine status and throughput.")
+	st_item_define("crusher_kit", dropper, "Crusher Kit", 1, "uncommon", "Place to deploy a Crusher machine.")
+	st_item_define("press_kit", piston, "Press Kit", 1, "uncommon", "Place to deploy a Press machine.")
+	st_item_define("mixer_kit", cauldron, "Mixer Kit", 1, "uncommon", "Place to deploy a Mixer machine.")
+	st_item_define("smelter_kit", furnace, "Smelter Kit", 1, "uncommon", "Place to deploy a Smelter machine.")
+	st_item_define("assembler_kit", dispenser, "Assembler Kit", 2, "rare", "Place to deploy an Assembler machine.")
+	st_item_define("refinery_kit", brewing stand, "Refinery Kit", 2, "rare", "Place to deploy a Refinery machine.")
+	st_item_define("electrolyzer_kit", sea lantern, "Electrolyzer Kit", 2, "rare", "Place to deploy an Electrolyzer machine.")
+	st_item_define("fabricator_kit", enchanting table, "Fabricator Kit", 3, "epic", "Place to deploy a Fabricator machine.")
+
+function st_machine_kit_id_from_machine(machine: text) :: text:
+	set {_machine} to lowercase {_machine}
+	if {_machine} is "crusher":
+		return "crusher_kit"
+	if {_machine} is "press":
+		return "press_kit"
+	if {_machine} is "mixer":
+		return "mixer_kit"
+	if {_machine} is "smelter":
+		return "smelter_kit"
+	if {_machine} is "assembler":
+		return "assembler_kit"
+	if {_machine} is "refinery":
+		return "refinery_kit"
+	if {_machine} is "electrolyzer":
+		return "electrolyzer_kit"
+	if {_machine} is "fabricator":
+		return "fabricator_kit"
+	return ""
+
+function st_machine_kit_machine_type(id: text) :: text:
+	set {_id} to lowercase {_id}
+	if {_id} is "crusher_kit":
+		return "crusher"
+	if {_id} is "press_kit":
+		return "press"
+	if {_id} is "mixer_kit":
+		return "mixer"
+	if {_id} is "smelter_kit":
+		return "smelter"
+	if {_id} is "assembler_kit":
+		return "assembler"
+	if {_id} is "refinery_kit":
+		return "refinery"
+	if {_id} is "electrolyzer_kit":
+		return "electrolyzer"
+	if {_id} is "fabricator_kit":
+		return "fabricator"
+	return ""
+
+function st_machine_kit_is_advanced(id: text) :: boolean:
+	set {_machine} to st_machine_kit_machine_type({_id})
+	if {_machine} is "assembler":
+		return true
+	if {_machine} is "refinery":
+		return true
+	if {_machine} is "electrolyzer":
+		return true
+	if {_machine} is "fabricator":
+		return true
+	return false
 
 function st_item_define(id: text, material: item type, name: text, tier: number, rarity: text, description: text):
 	set {st.item.def::%{_id}%::material} to {_material}

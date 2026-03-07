@@ -28,35 +28,45 @@ function st_recipe_is_known_id(id: text) :: boolean:
 function st_recipes_register_defaults():
 	delete {st.recipe::*}
 
-	st_recipe_define("crafting_shapeless", "iron_plate_manual", "crushed_iron", "crushed_iron", "iron_plate", 1, 4, 0, 0, 0, "Press two crushed iron into one plate.")
-	st_recipe_define("crafting_shaped", "primitive_hammer_recipe", "raw_iron", "stick", "primitive_hammer", 1, 5, 0, 0, 0, "Craft a primitive hammer for manual early-game processing.")
-	st_recipe_define("crafting_shapeless", "starter_casing_manual", "iron_plate", "copper_wire", "machine_casing", 1, 6, 0, 0, 0, "Starter manual assembly of a machine casing.")
-	st_recipe_define("crafting_shaped", "coil_basic", "copper_wire", "iron_plate", "copper_coil", 1, 6, 1, 0, 0, "Shape wire and plate into a basic coil.")
+	st_recipe_define_pattern("iron_plate_manual", "CC ", "CC ", "   ", "C", "crushed_iron", "", "", "", "", "iron_plate", 2, 4, 0, "Hammer four crushed iron into two flat starter plates.")
+	st_recipe_define_pattern("primitive_hammer_recipe", "RR ", " S ", " S ", "R", "raw_iron", "S", "stick", "", "", "primitive_hammer", 1, 5, 0, "Craft a primitive hammer in an actual hammer shape without overcharging the replacement cost.")
+	st_recipe_define_pattern("starter_casing_manual", "IWI", "W W", "IWI", "I", "iron_plate", "W", "copper_wire", "", "", "machine_casing", 2, 6, 1, "Frame two starter machine casings with iron plates and copper wire.")
+	st_recipe_define_pattern("coil_basic", " W ", "WIW", " W ", "W", "copper_wire", "I", "iron_plate", "", "", "copper_coil", 2, 6, 1, "Wrap copper wire around a plate to form a pair of basic coils.")
+	st_recipe_define_pattern("reinforced_casing_craft", " H ", "BCB", " H ", "H", "heat_briquette", "B", "iron_plate", "C", "machine_casing", "reinforced_casing", 1, 8, 1, "Brace a machine casing with two heat briquettes and plate ribs.")
+	st_recipe_define_pattern("control_core_craft", " C ", " L ", " C ", "C", "copper_coil", "L", "linker_tool", "", "", "control_core", 1, 8, 1, "Build a compact control core from tuned coils around a linker spine.")
+	st_recipe_define_pattern("crusher_kit_recipe", " I ", " C ", "I I", "I", "iron_plate", "C", "machine_casing", "", "", "crusher_kit", 1, 8, 1, "Assemble a crusher kit from support legs and a central machine casing.")
+	st_recipe_define_pattern("press_kit_recipe", "III", " C ", " I ", "I", "iron_plate", "C", "machine_casing", "", "", "press_kit", 1, 8, 1, "Build a press kit with stacked plates over a central machine frame.")
+	st_recipe_define_pattern("mixer_kit_recipe", "W W", " C ", "W W", "W", "copper_wire", "C", "machine_casing", "", "", "mixer_kit", 1, 8, 1, "Build a mixer kit with wired paddles around the casing core.")
+	st_recipe_define_pattern("smelter_kit_recipe", "III", "HCH", " H ", "I", "iron_plate", "H", "heat_briquette", "C", "machine_casing", "smelter_kit", 1, 8, 1, "Build a smelter kit with insulated plating and a compact hot chamber.")
+	st_recipe_define_pattern("assembler_kit_recipe", " R ", "WCW", " R ", "R", "reinforced_casing", "W", "copper_wire", "C", "control_core", "assembler_kit", 1, 10, 2, "Assemble an assembler kit from a reinforced frame, wiring, and a control core.")
+	st_recipe_define_pattern("refinery_kit_recipe", " T ", "HCH", " T ", "T", "treated_plate", "H", "heat_briquette", "C", "reinforced_casing", "refinery_kit", 1, 10, 2, "Assemble a refinery kit with treated plates and a heated processing bay.")
+	st_recipe_define_pattern("electrolyzer_kit_recipe", " C ", "FRF", " C ", "C", "copper_coil", "F", "refined_flux", "R", "reinforced_casing", "electrolyzer_kit", 1, 10, 2, "Assemble an electrolyzer kit around a reinforced charged core.")
+	st_recipe_define_pattern("fabricator_kit_recipe", " M ", "GRG", " M ", "M", "charged_mesh", "G", "electrolyte_gel", "R", "reinforced_casing", "fabricator_kit", 1, 10, 3, "Assemble a fabricator kit from charged mesh, gel channels, and a reinforced core.")
 	st_recipe_define("machine_crusher", "iron_raw_to_crushed", "raw_iron", "", "crushed_iron", 2, 8, 0, 4, 0, "Crushes raw iron into processed feedstock.")
-	st_recipe_define("machine_press", "plate_pressing", "iron_ingot", "", "iron_plate", 1, 10, 1, 6, 0, "Machine pressing for higher throughput.")
-	st_recipe_define("machine_press", "wire_coiling", "copper_wire", "", "copper_coil", 1, 8, 1, 6, 0, "Compresses wound copper wire into a usable coil.")
-	st_recipe_define("machine_mixer", "casing_mix", "iron_plate", "copper_coil", "machine_casing", 1, 14, 1, 8, 15, "Mixes structural and conductive parts into a casing.")
-	st_recipe_define("machine_mixer", "heat_briquette_blend", "ash", "slag", "heat_briquette", 2, 12, 2, 6, 0, "Blends ash and slag into compact industrial briquettes for steadier machine heat.")
-	st_recipe_define3("machine_mixer", "linker_mix_advanced", "iron_plate", "copper_wire", "copper_coil", "linker_tool", 1, 18, 2, 10, 0, "Advanced three-part mixing recipe for a logistics linker tool.")
+	st_recipe_define("machine_press", "plate_pressing", "iron_ingot", "", "iron_plate", 2, 9, 1, 5, 0, "Machine pressing for higher-throughput plate output.")
+	st_recipe_define("machine_press", "wire_coiling", "copper_wire", "", "copper_coil", 2, 7, 1, 5, 0, "Press-coils copper wire into a more efficient bundle of usable coils.")
+	st_recipe_define("machine_mixer", "casing_mix", "iron_plate", "copper_coil", "machine_casing", 2, 12, 1, 7, 10, "Mixes structural and conductive parts into two machine casings for early automation scale-up.")
+	st_recipe_define("machine_mixer", "heat_briquette_blend", "ash", "slag", "heat_briquette", 3, 10, 2, 5, 0, "Blends ash and slag into a larger batch of industrial briquettes for steadier machine heat.")
+	st_recipe_define3("machine_mixer", "linker_mix_advanced", "iron_plate", "copper_wire", "copper_coil", "linker_tool", 1, 16, 2, 9, 0, "Advanced three-part mixing recipe for a logistics linker tool with slightly smoother industrial pacing.")
 	st_recipe_define("machine_smelter", "smelt_crushed_iron", "crushed_iron", "", "iron_plate", 1, 12, 1, 8, 25, "Enhanced smelting/forging path for crushed iron.")
-	st_recipe_define("machine_smelter", "smelt_raw_copper", "raw_copper_chunk", "", "copper_wire", 2, 12, 1, 8, 15, "Smelts and draws raw copper into conductive wire.")
+	st_recipe_define("machine_smelter", "smelt_raw_copper", "raw_copper_chunk", "", "copper_wire", 3, 11, 1, 7, 15, "Smelts and draws raw copper into a larger batch of conductive wire.")
 	st_recipe_define("machine_smelter", "slag_recovery", "slag", "", "crushed_iron", 1, 10, 2, 4, 0, "Recycles slag into a small amount of reusable material.")
-	st_recipe_define("machine_refinery", "slag_slurry_prep", "slag", "", "slag_slurry", 1, 10, 2, 8, 0, "Breaks rough slag into a pumpable slurry token for staged refining.")
-	st_recipe_define("machine_refinery", "slurry_separation", "slag_slurry", "", "refined_flux", 1, 16, 2, 10, 100, "Separates slag slurry into refined flux while trapping residual solids.")
-	st_recipe_define("machine_refinery", "plate_treating", "iron_plate", "", "treated_plate", 1, 12, 2, 8, 0, "Treats an iron plate for more durable advanced machine frames.")
+	st_recipe_define("machine_refinery", "slag_slurry_prep", "slag", "", "slag_slurry", 2, 8, 2, 6, 0, "Breaks rough slag into two pumpable slurry tokens for staged refining.")
+	st_recipe_define("machine_refinery", "slurry_separation", "slag_slurry", "", "refined_flux", 1, 14, 2, 8, 100, "Separates slag slurry into refined flux while trapping residual solids more efficiently.")
+	st_recipe_define("machine_refinery", "plate_treating", "iron_plate", "", "treated_plate", 1, 10, 2, 6, 0, "Treats an iron plate for more durable advanced machine frames with lower overhead.")
 	st_recipe_set_byproduct("machine_refinery", "slurry_separation", "spent_filter", 1)
-	st_recipe_define("machine_electrolyzer", "gel_stabilizing", "slag_slurry", "", "electrolyte_gel", 1, 18, 3, 12, 100, "Stabilizes slurry under charge into electrolyte gel while shedding reactive ions.")
-	st_recipe_define("machine_electrolyzer", "coil_energizing", "copper_coil", "", "charged_mesh", 1, 20, 3, 14, 100, "Ionizes a copper coil into a charged mesh used by late-game fabricators.")
+	st_recipe_define("machine_electrolyzer", "gel_stabilizing", "slag_slurry", "", "electrolyte_gel", 2, 16, 3, 10, 100, "Stabilizes slurry under charge into a larger gel batch while shedding reactive ions.")
+	st_recipe_define("machine_electrolyzer", "coil_energizing", "copper_coil", "", "charged_mesh", 1, 18, 3, 12, 100, "Ionizes a copper coil into charged mesh with a cleaner power curve.")
 	st_recipe_set_byproduct("machine_electrolyzer", "gel_stabilizing", "ion_fragment", 1)
 	st_recipe_set_byproduct("machine_electrolyzer", "coil_energizing", "ion_fragment", 1)
-	st_recipe_define("machine_assembler", "wrench_assembly", "iron_plate", "copper_wire", "tech_wrench", 1, 16, 1, 10, 0, "Assembles a basic machine wrench.")
-	st_recipe_define("machine_assembler", "meter_assembly", "copper_coil", "iron_plate", "status_meter", 1, 18, 1, 12, 0, "Assembles a machine status meter.")
-	st_recipe_define("machine_assembler", "control_core_assembly", "refined_flux", "copper_coil", "control_core", 1, 22, 2, 12, 0, "Builds a compact control core from refined flux and a tuned coil.")
-	st_recipe_define("machine_assembler", "reinforced_casing_assembly", "treated_plate", "machine_casing", "reinforced_casing", 1, 22, 2, 12, 0, "Upgrades a casing with a treated structural plate.")
-	st_recipe_define("machine_assembler", "meter_assembly_advanced", "reinforced_casing", "control_core", "status_meter", 1, 24, 3, 14, 0, "Advanced assembly path for a high-grade status meter.")
-	st_recipe_define("machine_assembler", "thermal_cell_assembly", "refined_flux", "reinforced_casing", "thermal_cell", 1, 26, 3, 16, 0, "Seals refined flux inside a reinforced shell to create a dense late-game thermal cell.")
-	st_recipe_define("machine_fabricator", "matrix_fabrication", "charged_mesh", "control_core", "fabrication_matrix", 1, 36, 3, 18, 0, "Fuses charged mesh and a control core into a late-game fabrication matrix.")
-	st_recipe_define("machine_fabricator", "lens_polishing", "electrolyte_gel", "treated_plate", "precision_lens", 1, 40, 3, 20, 0, "Polishes a precision lens from stabilized gel and a treated structural plate.")
+	st_recipe_define("machine_assembler", "wrench_assembly", "iron_plate", "copper_wire", "tech_wrench", 1, 14, 1, 8, 0, "Assembles a basic machine wrench with a quicker starter-machine cycle.")
+	st_recipe_define("machine_assembler", "meter_assembly", "copper_coil", "iron_plate", "status_meter", 1, 16, 1, 10, 0, "Assembles a machine status meter with reduced early industrial overhead.")
+	st_recipe_define("machine_assembler", "control_core_assembly", "refined_flux", "copper_coil", "control_core", 1, 20, 2, 11, 0, "Builds a compact control core from refined flux and a tuned coil with smoother Tier 2 pacing.")
+	st_recipe_define("machine_assembler", "reinforced_casing_assembly", "treated_plate", "machine_casing", "reinforced_casing", 1, 20, 2, 11, 0, "Upgrades a casing with a treated structural plate at a friendlier industrial cost.")
+	st_recipe_define("machine_assembler", "meter_assembly_advanced", "reinforced_casing", "control_core", "status_meter", 1, 22, 3, 12, 0, "Advanced assembly path for a high-grade status meter with faster late-loop turnaround.")
+	st_recipe_define("machine_assembler", "thermal_cell_assembly", "refined_flux", "reinforced_casing", "thermal_cell", 1, 24, 3, 14, 0, "Seals refined flux inside a reinforced shell to create a dense late-game thermal cell with lower setup drag.")
+	st_recipe_define("machine_fabricator", "matrix_fabrication", "charged_mesh", "control_core", "fabrication_matrix", 1, 32, 3, 16, 0, "Fuses charged mesh and a control core into a late-game fabrication matrix with better high-end pacing.")
+	st_recipe_define("machine_fabricator", "lens_polishing", "electrolyte_gel", "treated_plate", "precision_lens", 1, 34, 3, 17, 0, "Polishes a precision lens from stabilized gel and a treated structural plate with a slightly faster advanced cycle.")
 	st_recipe_set_quality_bonus("machine_fabricator", "matrix_fabrication", "pristine_matrix", 20)
 
 function st_recipe_define(type: text, id: text, input1: text, input2: text, output: text, outputAmount: number, duration: number, unlockTier: number, fuelCost: number, byproductChance: number, description: text):
@@ -95,6 +105,104 @@ function st_recipe_define3(type: text, id: text, input1: text, input2: text, inp
 	st_recipe_define({_type}, {_id}, {_input1}, {_input2}, {_output}, {_outputAmount}, {_duration}, {_unlockTier}, {_fuelCost}, {_byproductChance}, {_description})
 	set {_type} to lowercase {_type}
 	set {st.recipe::%{_type}%::%{_id}%::input3} to lowercase {_input3}
+
+function st_recipe_define_pattern(id: text, row1: text, row2: text, row3: text, key1: text, value1: text, key2: text, value2: text, key3: text, value3: text, output: text, outputAmount: number, duration: number, unlockTier: number, description: text):
+	set {_input1} to lowercase {_value1}
+	set {_input2} to lowercase {_value2}
+	set {_input3} to lowercase {_value3}
+	st_recipe_define("crafting_shaped", {_id}, {_input1}, {_input2}, {_output}, {_outputAmount}, {_duration}, {_unlockTier}, 0, 0, {_description})
+	set {st.recipe::crafting_shaped::%{_id}%::input3} to {_input3}
+	set {st.recipe::crafting_shaped::%{_id}%::pattern::1} to {_row1}
+	set {st.recipe::crafting_shaped::%{_id}%::pattern::2} to {_row2}
+	set {st.recipe::crafting_shaped::%{_id}%::pattern::3} to {_row3}
+	delete {st.recipe::crafting_shaped::%{_id}%::key::*}
+	if {_key1} is not "":
+		set {st.recipe::crafting_shaped::%{_id}%::key::%uppercase {_key1}%} to lowercase {_value1}
+	if {_key2} is not "":
+		set {st.recipe::crafting_shaped::%{_id}%::key::%uppercase {_key2}%} to lowercase {_value2}
+	if {_key3} is not "":
+		set {st.recipe::crafting_shaped::%{_id}%::key::%uppercase {_key3}%} to lowercase {_value3}
+
+function st_recipe_pattern_symbol_value(id: text, symbol: text) :: text:
+	set {_symbol} to uppercase {_symbol}
+	set {_value} to {st.recipe::crafting_shaped::%{_id}%::key::%{_symbol}%}
+	if {_value} is not set:
+		return ""
+	return {_value}
+
+function st_recipe_pattern_char_at(rowText: text, index: number) :: text:
+	if {_index} < 1:
+		return " "
+	if length of {_rowText} < {_index}:
+		return " "
+	return subtext of {_rowText} from {_index} to {_index}
+
+function st_recipe_pattern_signature(id: text) :: text:
+	set {_minRow} to 4
+	set {_minCol} to 4
+	set {_maxRow} to 0
+	set {_maxCol} to 0
+	set {_row} to 1
+	while {_row} <= 3:
+		set {_rowText} to {st.recipe::crafting_shaped::%{_id}%::pattern::%{_row}%}
+		set {_col} to 1
+		while {_col} <= 3:
+			set {_char} to st_recipe_pattern_char_at({_rowText}, {_col})
+			if {_char} is " ":
+				set {_value} to ""
+			else:
+				set {_value} to st_recipe_pattern_symbol_value({_id}, {_char})
+				if {_value} is "":
+					return "__invalid__"
+			set {_pattern::%{_row}%::%{_col}%} to {_value}
+			if {_value} is not "":
+				if {_row} < {_minRow}:
+					set {_minRow} to {_row}
+				if {_row} > {_maxRow}:
+					set {_maxRow} to {_row}
+				if {_col} < {_minCol}:
+					set {_minCol} to {_col}
+				if {_col} > {_maxCol}:
+					set {_maxCol} to {_col}
+			add 1 to {_col}
+		add 1 to {_row}
+	if {_maxRow} is 0:
+		return ""
+	set {_signature} to ""
+	set {_row} to {_minRow}
+	while {_row} <= {_maxRow}:
+		set {_line} to ""
+		set {_col} to {_minCol}
+		while {_col} <= {_maxCol}:
+			set {_value} to {_pattern::%{_row}%::%{_col}%}
+			if {_value} is "":
+				set {_value} to "_"
+			if {_line} is "":
+				set {_line} to {_value}
+			else:
+				set {_line} to "%{_line}%,%{_value}%"
+			add 1 to {_col}
+		if {_signature} is "":
+			set {_signature} to {_line}
+		else:
+			set {_signature} to "%{_signature}%/%{_line}%"
+		add 1 to {_row}
+	return {_signature}
+
+function st_recipe_pattern_display_row(id: text, rowIndex: number) :: text:
+	set {_rowText} to {st.recipe::crafting_shaped::%{_id}%::pattern::%{_rowIndex}%}
+	set {_display} to ""
+	set {_col} to 1
+	while {_col} <= 3:
+		set {_char} to st_recipe_pattern_char_at({_rowText}, {_col})
+		if {_char} is " ":
+			set {_char} to "·"
+		if {_display} is "":
+			set {_display} to {_char}
+		else:
+			set {_display} to "%{_display}% %{_char}%"
+		add 1 to {_col}
+	return {_display}
 
 function st_recipe_set_byproduct(type: text, id: text, byproductId: text, amount: number):
 	set {_type} to lowercase {_type}
@@ -186,6 +294,21 @@ function st_recipe_validate(type: text, id: text) :: text:
 	set {_type} to lowercase {_type}
 	if st_recipe_exists({_type}, {_id}) is false:
 		return "missing"
+	if {_type} is "crafting_shaped":
+		set {_output} to {st.recipe::%{_type}%::%{_id}%::output}
+		set {_duration} to {st.recipe::%{_type}%::%{_id}%::duration}
+		if {_output} is "":
+			return "invalid_output"
+		if {_duration} <= 0:
+			return "invalid_duration"
+		if st_recipe_is_known_id({_output}) is false:
+			return "unknown_output_id"
+		set {_signature} to st_recipe_pattern_signature({_id})
+		if {_signature} is "":
+			return "invalid_pattern"
+		if {_signature} is "__invalid__":
+			return "unknown_input_id"
+		return "ok"
 
 	set {_output} to {st.recipe::%{_type}%::%{_id}%::output}
 	set {_input1} to {st.recipe::%{_type}%::%{_id}%::input1}
@@ -219,166 +342,172 @@ function st_recipe_validate(type: text, id: text) :: text:
 
 	return "ok"
 
-function st_recipe_match_shapeless2(type: text, inputA: text, inputB: text) :: text:
-	set {_type} to lowercase {_type}
-	set {_a} to lowercase {_inputA}
-	set {_b} to lowercase {_inputB}
-
-	loop {st.recipe.type::%{_type}%::ids::*}:
-		set {_id} to loop-value
-		set {_r1} to {st.recipe::%{_type}%::%{_id}%::input1}
-		set {_r2} to {st.recipe::%{_type}%::%{_id}%::input2}
-		if {_a} is {_r1}:
-			if {_b} is {_r2}:
-				return {_id}
-		if {_a} is {_r2}:
-			if {_b} is {_r1}:
-				return {_id}
-
-	return ""
-
-function st_recipe_match_shaped2(type: text, leftInput: text, rightInput: text) :: text:
-	set {_type} to lowercase {_type}
-	set {_a} to lowercase {_leftInput}
-	set {_b} to lowercase {_rightInput}
-
-	loop {st.recipe.type::%{_type}%::ids::*}:
-		set {_id} to loop-value
-		if {st.recipe::%{_type}%::%{_id}%::input1} is {_a}:
-			if {st.recipe::%{_type}%::%{_id}%::input2} is {_b}:
-				return {_id}
-
-	return ""
-
-function st_recipe_external_item(id: text) :: item:
-	set {_idText} to lowercase {_id}
-	if {_idText} is "raw_iron":
-		return raw iron
-	if {_idText} is "iron_ingot":
-		return iron ingot
-	if {_idText} is "copper_ingot":
-		return copper ingot
-	if {_idText} is "stick":
-		return stick
-	return air
-
-function st_recipe_inventory_has(p: player, id: text, amountNeeded: number) :: boolean:
-	if {_amountNeeded} <= 0:
-		return true
-	if st_item_exists({_id}) is true:
-		return st_player_has_custom_item({_p}, {_id}, {_amountNeeded})
-	set {_item} to st_recipe_external_item({_id})
+function st_recipe_grid_slot_id(inv: inventory, slotIndex: number) :: text:
+	set {_item} to slot {_slotIndex} of {_inv}
 	if {_item} is air:
-		return false
-	if {_p} has {_amountNeeded} of {_item}:
-		return true
-	return false
+		return ""
+	return st_item_id_or_type({_item})
 
-function st_recipe_inventory_remove(p: player, id: text, amountNeeded: number) :: boolean:
-	if {_amountNeeded} <= 0:
-		return true
-	if st_item_exists({_id}) is true:
-		set {_built} to st_item_build({_id}, {_amountNeeded})
-		if {_built} is air:
-			return false
-		if {_p} has {_amountNeeded} of {_built}:
-			remove {_amountNeeded} of {_built} from inventory of {_p}
+function st_recipe_grid_non_air_count(inv: inventory) :: number:
+	set {_count} to 0
+	set {_slot} to 1
+	while {_slot} <= 9:
+		set {_item} to slot {_slot} of {_inv}
+		if {_item} is not air:
+			add 1 to {_count}
+		add 1 to {_slot}
+	return {_count}
+
+function st_recipe_grid_has_custom_items(inv: inventory) :: boolean:
+	set {_slot} to 1
+	while {_slot} <= 9:
+		set {_id} to st_item_id(slot {_slot} of {_inv})
+		if {_id} is not "":
 			return true
+		add 1 to {_slot}
+	return false
+
+function st_recipe_grid_match_shaped_recipe(inv: inventory, id: text) :: boolean:
+	set {_patternSignature} to st_recipe_pattern_signature({_id})
+	if {_patternSignature} is "":
 		return false
-	set {_item} to st_recipe_external_item({_id})
-	if {_item} is air:
+	if {_patternSignature} is "__invalid__":
 		return false
-	if {_p} has {_amountNeeded} of {_item}:
-		remove {_amountNeeded} of {_item} from inventory of {_p}
+	if st_recipe_grid_signature({_inv}) is {_patternSignature}:
 		return true
 	return false
 
-function st_recipe_take_one_from_hand(p: player):
-	set {_held} to tool of {_p}
-	if {_held} is air:
-		stop
-	if amount of {_held} > 1:
-		set amount of {_held} to amount of {_held} - 1
-		set tool of {_p} to {_held}
-		stop
-	set tool of {_p} to air
+function st_recipe_grid_signature(inv: inventory) :: text:
+	set {_minRow} to 4
+	set {_minCol} to 4
+	set {_maxRow} to 0
+	set {_maxCol} to 0
+	set {_row} to 1
+	while {_row} <= 3:
+		set {_col} to 1
+		while {_col} <= 3:
+			set {_slot} to ({_row} - 1) * 3 + {_col}
+			set {_value} to st_recipe_grid_slot_id({_inv}, {_slot})
+			set {_grid::%{_row}%::%{_col}%} to {_value}
+			if {_value} is not "":
+				if {_row} < {_minRow}:
+					set {_minRow} to {_row}
+				if {_row} > {_maxRow}:
+					set {_maxRow} to {_row}
+				if {_col} < {_minCol}:
+					set {_minCol} to {_col}
+				if {_col} > {_maxCol}:
+					set {_maxCol} to {_col}
+			add 1 to {_col}
+		add 1 to {_row}
+	if {_maxRow} is 0:
+		return ""
+	set {_signature} to ""
+	set {_row} to {_minRow}
+	while {_row} <= {_maxRow}:
+		set {_line} to ""
+		set {_col} to {_minCol}
+		while {_col} <= {_maxCol}:
+			set {_value} to {_grid::%{_row}%::%{_col}%}
+			if {_value} is "":
+				set {_value} to "_"
+			if {_line} is "":
+				set {_line} to {_value}
+			else:
+				set {_line} to "%{_line}%,%{_value}%"
+			add 1 to {_col}
+		if {_signature} is "":
+			set {_signature} to {_line}
+		else:
+			set {_signature} to "%{_signature}%/%{_line}%"
+		add 1 to {_row}
+	return {_signature}
 
-function st_recipe_try_manual_craft_recipe(p: player, type: text, id: text) :: boolean:
-	set {_type} to lowercase {_type}
-	set {_input1} to {st.recipe::%{_type}%::%{_id}%::input1}
-	set {_input2} to {st.recipe::%{_type}%::%{_id}%::input2}
-	set {_output} to {st.recipe::%{_type}%::%{_id}%::output}
-	set {_outputAmount} to {st.recipe::%{_type}%::%{_id}%::outputAmount}
-	set {_unlockTier} to st_recipe_unlock_tier({_type}, {_id})
-	set {_playerTier} to {st.player::%uuid of {_p}%::tier}
-	if {_playerTier} is not set:
-		set {_playerTier} to 0
-	if {_playerTier} < {_unlockTier}:
-		st_message_warn({_p}, "You need tier %{_unlockTier}% to craft %{_id}%.")
+function st_recipe_grid_match_shapeless_recipe(inv: inventory, id: text) :: boolean:
+	if st_recipe_grid_non_air_count({_inv}) is not 2:
+		return false
+	delete {_items::*}
+	set {_slot} to 1
+	while {_slot} <= 9:
+		set {_slotId} to st_recipe_grid_slot_id({_inv}, {_slot})
+		if {_slotId} is not "":
+			add {_slotId} to {_items::*}
+		add 1 to {_slot}
+	if size of {_items::*} is not 2:
+		return false
+	set {_input1} to {st.recipe::crafting_shapeless::%{_id}%::input1}
+	set {_input2} to {st.recipe::crafting_shapeless::%{_id}%::input2}
+	if {_items::1} is {_input1}:
+		if {_items::2} is {_input2}:
+			return true
+	if {_items::1} is {_input2}:
+		if {_items::2} is {_input1}:
+			return true
+	return false
+
+function st_recipe_match_crafting_grid(inv: inventory) :: text:
+	loop {st.recipe.type::crafting_shaped::ids::*}:
+		if st_recipe_grid_match_shaped_recipe({_inv}, loop-value) is true:
+			return "crafting_shaped::%loop-value%"
+	loop {st.recipe.type::crafting_shapeless::ids::*}:
+		if st_recipe_grid_match_shapeless_recipe({_inv}, loop-value) is true:
+			return "crafting_shapeless::%loop-value%"
+	return ""
+
+function st_recipe_crafting_consume_slot(inv: inventory, slotIndex: number):
+	set {_item} to slot {_slotIndex} of {_inv}
+	if {_item} is air:
+		stop
+	if amount of {_item} > 1:
+		set amount of {_item} to amount of {_item} - 1
+		set slot {_slotIndex} of {_inv} to {_item}
+		stop
+	set slot {_slotIndex} of {_inv} to air
+
+function st_recipe_crafting_consume_match(inv: inventory, type: text, id: text):
+	set {_slot} to 1
+	while {_slot} <= 9:
+		set {_item} to slot {_slot} of {_inv}
+		if {_item} is not air:
+			st_recipe_crafting_consume_slot({_inv}, {_slot})
+		add 1 to {_slot}
+
+function st_recipe_is_crafting_inventory(inv: inventory) :: boolean:
+	if {_inv} is not set:
+		return false
+	set {_title} to name of {_inv}
+	if {_title} is "Crafting":
 		return true
+	if {_title} is "Workbench":
+		return true
+	return false
+
+function st_recipe_refresh_crafting_preview(inv: inventory, p: player):
+	if st_recipe_is_crafting_inventory({_inv}) is false:
+		stop
+	set {_match} to st_recipe_match_crafting_grid({_inv})
+	if {_match} is "":
+		if st_recipe_grid_has_custom_items({_inv}) is true:
+			set slot 0 of {_inv} to air
+		stop
+	set {_parts::*} to split {_match} at "::"
+	if size of {_parts::*} < 2:
+		set slot 0 of {_inv} to air
+		stop
+	set {_type} to {_parts::1}
+	set {_id} to {_parts::2}
+	if st_recipe_player_unlocked({_p}, {_type}, {_id}) is false:
+		set slot 0 of {_inv} to air
+		stop
+	set {_outputId} to st_recipe_output({_type}, {_id})
+	set {_outputAmount} to {st.recipe::%{_type}%::%{_id}%::outputAmount}
 	if {_outputAmount} is not set:
 		set {_outputAmount} to 1
-	set {_needSecond} to 1
-	if {_input1} is {_input2}:
-		set {_needSecond} to 2
-	if st_recipe_inventory_has({_p}, {_input2}, {_needSecond}) is false:
-		st_message_warn({_p}, "Missing ingredient: %{_input2}%")
-		return true
-	st_recipe_take_one_from_hand({_p})
-	if st_recipe_inventory_remove({_p}, {_input2}, 1) is false:
-		st_message_warn({_p}, "Missing ingredient: %{_input2}%")
-		return true
-	if st_item_give({_p}, {_output}, {_outputAmount}) is false:
-		st_message_error({_p}, "Could not create recipe output %{_output}%.")
-		return true
-	st_message_ok({_p}, "Manual craft complete: %{_id}% -> %{_output}% x%{_outputAmount}%")
-	return true
-
-function st_recipe_try_manual_crafting_table(p: player, loc: location) :: boolean:
-	if {_p} is not sneaking:
-		return false
-	if block at {_loc} is not crafting table:
-		return false
-	if st_machine_basic_exists({_loc}) is true:
-		return false
-	if st_machine_advanced_exists({_loc}) is true:
-		return false
-	set {_heldId} to st_item_id_or_type(tool of {_p})
-	if {_heldId} is "":
-		st_message_warn({_p}, "Manual crafting uses a crafting table plus ingredients in your inventory. Hold the first ingredient in your hand, then sneak-right-click the table.")
-		return true
-	loop {st.recipe.type::crafting_shaped::ids::*}:
-		set {_id} to loop-value
-		if {st.recipe::crafting_shaped::%{_id}%::input1} is {_heldId}:
-			set {_input2} to {st.recipe::crafting_shaped::%{_id}%::input2}
-			if st_recipe_inventory_has({_p}, {_input2}, 1) is true:
-				return st_recipe_try_manual_craft_recipe({_p}, "crafting_shaped", {_id})
-	loop {st.recipe.type::crafting_shapeless::ids::*}:
-		set {_id} to loop-value
-		set {_input1} to {st.recipe::crafting_shapeless::%{_id}%::input1}
-		set {_input2} to {st.recipe::crafting_shapeless::%{_id}%::input2}
-		if {_heldId} is {_input1}:
-			if st_recipe_inventory_has({_p}, {_input2}, 1) is true:
-				return st_recipe_try_manual_craft_recipe({_p}, "crafting_shapeless", {_id})
-		else if {_heldId} is {_input2}:
-			if st_recipe_inventory_has({_p}, {_input1}, 1) is true:
-				if {_input1} is {_input2}:
-					return st_recipe_try_manual_craft_recipe({_p}, "crafting_shapeless", {_id})
-				st_recipe_take_one_from_hand({_p})
-				if st_recipe_inventory_remove({_p}, {_input1}, 1) is false:
-					st_message_warn({_p}, "Missing ingredient: %{_input1}%")
-					return true
-				set {_output} to {st.recipe::crafting_shapeless::%{_id}%::output}
-				set {_outputAmount} to {st.recipe::crafting_shapeless::%{_id}%::outputAmount}
-				if {_outputAmount} is not set:
-					set {_outputAmount} to 1
-				if st_item_give({_p}, {_output}, {_outputAmount}) is false:
-					st_message_error({_p}, "Could not create recipe output %{_output}%.")
-					return true
-				st_message_ok({_p}, "Manual craft complete: %{_id}% -> %{_output}% x%{_outputAmount}%")
-				return true
-	st_message_warn({_p}, "No manual crafting recipe matched. Hold the first ingredient in your hand and keep the other ingredient in your inventory, then sneak-right-click the crafting table.")
-	return true
+	set {_preview} to st_item_build({_outputId}, {_outputAmount})
+	if {_preview} is air:
+		set slot 0 of {_inv} to air
+		stop
+	set slot 0 of {_inv} to {_preview}
 
 function st_recipe_match_machine(type: text, primaryInput: text, secondaryInput: text) :: text:
 	set {_type} to lowercase {_type}
@@ -529,9 +658,16 @@ command /strecipe [<text>] [<text>] [<text>]:
 
 			st_ui_send(player, "info", "&7Type: &b%{_type}%")
 			st_ui_send(player, "data", "&7ID: &b%{_id}%")
-			st_ui_send(player, "data", "&7Input 1: &e%{st.recipe::%{_type}%::%{_id}%::input1}%")
-			st_ui_send(player, "data", "&7Input 2: &e%{st.recipe::%{_type}%::%{_id}%::input2}%")
-			st_ui_send(player, "data", "&7Input 3: &e%{st.recipe::%{_type}%::%{_id}%::input3}%")
+			if {_type} is "crafting_shaped":
+				st_ui_send(player, "data", "&7Pattern 1: &e%st_recipe_pattern_display_row({_id}, 1)%")
+				st_ui_send(player, "data", "&7Pattern 2: &e%st_recipe_pattern_display_row({_id}, 2)%")
+				st_ui_send(player, "data", "&7Pattern 3: &e%st_recipe_pattern_display_row({_id}, 3)%")
+				loop {st.recipe::crafting_shaped::%{_id}%::key::*}:
+					st_ui_send(player, "data", "&7Key %loop-index%: &e%loop-value%")
+			else:
+				st_ui_send(player, "data", "&7Input 1: &e%{st.recipe::%{_type}%::%{_id}%::input1}%")
+				st_ui_send(player, "data", "&7Input 2: &e%{st.recipe::%{_type}%::%{_id}%::input2}%")
+				st_ui_send(player, "data", "&7Input 3: &e%{st.recipe::%{_type}%::%{_id}%::input3}%")
 			st_ui_send(player, "stat", "&7Output: &a%{st.recipe::%{_type}%::%{_id}%::output}% x%{st.recipe::%{_type}%::%{_id}%::outputAmount}%")
 			st_ui_send(player, "stat", "&7Duration: &e%{st.recipe::%{_type}%::%{_id}%::duration}%s")
 			st_ui_send(player, "stat", "&7Fuel Cost: &e%{st.recipe::%{_type}%::%{_id}%::fuelCost}%")
@@ -577,9 +713,55 @@ command /strecipe [<text>] [<text>] [<text>]:
 
 		st_message_warn(player, "Unknown action. Use /strecipe <list|view|search|validate>")
 
-on right click:
-	if clicked block is not set:
+on inventory click:
+	if event-inventory is not set:
 		stop
-	set {_loc} to clicked block
-	if st_recipe_try_manual_crafting_table(player, {_loc}) is true:
+	if st_recipe_is_crafting_inventory(event-inventory) is false:
+		stop
+	set {_craftInv} to event-inventory
+	wait 1 tick
+	st_recipe_refresh_crafting_preview({_craftInv}, player)
+
+on inventory drag:
+	if event-inventory is not set:
+		stop
+	if st_recipe_is_crafting_inventory(event-inventory) is false:
+		stop
+	set {_craftInv} to event-inventory
+	wait 1 tick
+	st_recipe_refresh_crafting_preview({_craftInv}, player)
+
+on craft:
+	if event-inventory is not set:
+		stop
+	if st_recipe_is_crafting_inventory(event-inventory) is false:
+		stop
+	set {_match} to st_recipe_match_crafting_grid(event-inventory)
+	if {_match} is "":
+		stop
+	set {_parts::*} to split {_match} at "::"
+	if size of {_parts::*} < 2:
 		cancel event
+		stop
+	set {_type} to {_parts::1}
+	set {_id} to {_parts::2}
+	if st_recipe_player_unlocked(player, {_type}, {_id}) is false:
+		cancel event
+		set {_need} to st_recipe_unlock_tier({_type}, {_id})
+		st_message_warn(player, "You need tier %{_need}% to craft %{_id}%.")
+		stop
+	set {_outputId} to st_recipe_output({_type}, {_id})
+	set {_outputAmount} to {st.recipe::%{_type}%::%{_id}%::outputAmount}
+	if {_outputAmount} is not set:
+		set {_outputAmount} to 1
+	if st_item_exists({_outputId}) is false:
+		cancel event
+		stop
+	cancel event
+	st_recipe_crafting_consume_match(event-inventory, {_type}, {_id})
+	set slot 0 of event-inventory to air
+	if st_item_give(player, {_outputId}, {_outputAmount}) is false:
+		st_message_error(player, "Could not create recipe output %{_outputId}%.")
+	set {_craftInv} to event-inventory
+	wait 1 tick
+	st_recipe_refresh_crafting_preview({_craftInv}, player)

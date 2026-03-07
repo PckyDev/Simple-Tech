@@ -243,7 +243,14 @@ function st_gui_open_progress(p: player):
 	st_ui_send({_p}, "stat", "&7Registered recipes: &b%{_recipes}%")
 	st_ui_send({_p}, "stat", "&7Basic machines: &b%{_basic}%")
 	st_ui_send({_p}, "stat", "&7Advanced machines: &b%{_advanced}%")
-	st_ui_send({_p}, "hint", "&7Next step: build machine loops and unlock higher-tier recipes.")
+	if {_tier} <= 0:
+		st_ui_send({_p}, "hint", "&7Next step: finish the starter track to unlock Tier 1 machine crafting.")
+	else if {_tier} is 1:
+		st_ui_send({_p}, "hint", "&7Next step: craft `reinforced_casing` or `control_core` to push into Tier 2.")
+	else if {_tier} is 2:
+		st_ui_send({_p}, "hint", "&7Next step: build into electrolyzer-grade parts to unlock Tier 3 fabricator progression.")
+	else:
+		st_ui_send({_p}, "hint", "&7Next step: use Tier 3 materials for precision chains and fabricator outputs.")
 
 function st_gui_open_status(p: player):
 	st_gui_touch_session({_p})
