@@ -1,0 +1,457 @@
+# Simple Tech Module: st_03_gui
+options:
+	st-module-id: st_03_gui
+	st-gui-title-main: &1Simple Tech
+	st-gui-page-size: 8
+	st-gui-permission: simpletech.use
+
+function st_gui_header(p: player, title: text):
+	send "&8&m--------------------------------" to {_p}
+	send "&b%{_title}%" to {_p}
+	send "&8&m--------------------------------" to {_p}
+
+function st_gui_touch_session(p: player):
+	set {_u} to "%uuid of {_p}%"
+	if {_u} is not in {st.gui.sessions::*}:
+		add {_u} to {st.gui.sessions::*}
+
+function st_gui_progress_bar(progress: number, remaining: number, width: number) :: text:
+	set {_total} to {_progress} + {_remaining}
+	if {_width} < 5:
+		set {_width} to 5
+	if {_total} <= 0:
+		return "&8[&7idle&8]"
+	set {_filled} to floor(({_progress} / {_total}) * {_width})
+	if {_filled} < 0:
+		set {_filled} to 0
+	if {_filled} > {_width}:
+		set {_filled} to {_width}
+	set {_bar} to "&8["
+	set {_i} to 1
+	while {_i} <= {_width}:
+		if {_i} <= {_filled}:
+			set {_bar} to "%{_bar}%&a#"
+		else:
+			set {_bar} to "%{_bar}%&7-"
+		add 1 to {_i}
+	set {_percent} to floor(({_progress} / {_total}) * 100)
+	return "%{_bar}%&8] &f%{_percent}%%%"
+
+function st_gui_machine_recipe_type(machine: text) :: text:
+	set {_machineName} to lowercase {_machine}
+	if {_machineName} is "crusher":
+		return "machine_crusher"
+	if {_machineName} is "press":
+		return "machine_press"
+	if {_machineName} is "mixer":
+		return "machine_mixer"
+	if {_machineName} is "smelter":
+		return "machine_smelter"
+	return st_machine_advanced_recipe_type({_machineName})
+
+function st_gui_send_recipe_guide(receiver: player, recipeType: text, recipeId: text, outputId: text, outputAmount: number):
+	if {_recipeType} is "":
+		st_ui_send({_receiver}, "data", "Guide -> insert valid recipe ingredients to start processing.")
+		stop
+	if {_recipeId} is "":
+		st_ui_send({_receiver}, "data", "Guide -> waiting for recipe input.")
+		stop
+	set {_input1} to {st.recipe::%{_recipeType}%::%{_recipeId}%::input1}
+	set {_input2} to {st.recipe::%{_recipeType}%::%{_recipeId}%::input2}
+	set {_input3} to {st.recipe::%{_recipeType}%::%{_recipeId}%::input3}
+	set {_inputs} to "%{_input1}%"
+	if {_input2} is set:
+		if {_input2} is not "":
+			set {_inputs} to "%{_inputs}% + %{_input2}%"
+	if {_input3} is set:
+		if {_input3} is not "":
+			set {_inputs} to "%{_inputs}% + %{_input3}%"
+	if {_outputId} is "":
+		set {_outputId} to st_recipe_output({_recipeType}, {_recipeId})
+	if {_outputAmount} <= 0:
+		set {_outputAmount} to {st.recipe::%{_recipeType}%::%{_recipeId}%::outputAmount}
+	if {_outputAmount} is not set:
+		set {_outputAmount} to 1
+	st_ui_send({_receiver}, "data", "Input guide -> %{_inputs}%")
+	st_ui_send({_receiver}, "data", "Output guide -> %{_outputId}% x%{_outputAmount}%")
+
+function st_gui_open_machine_panel(p: player, loc: location):
+	st_gui_touch_session({_p})
+	if {_loc} is not set:
+		st_message_warn({_p}, "Look at a machine block first.")
+		stop
+
+	if st_machine_basic_exists({_loc}) is true:
+		set {_key} to st_machine_basic_key({_loc})
+		set {_machine} to {st.machine::%{_key}%::type}
+		set {_active} to {st.machine::%{_key}%::active}
+		set {_progress} to {st.machine::%{_key}%::progress}
+		set {_remaining} to {st.machine::%{_key}%::remaining}
+		set {_fuelKey} to st_location_key({_loc})
+		set {_fuel} to {st.power::%{_fuelKey}%}
+		set {_heat} to {st.heat::%{_fuelKey}%}
+		set {_autoFuel} to st_machine_auto_refuel_enabled({_loc})
+		set {_autoFuelId} to st_machine_auto_refuel_fuel_id({_loc})
+		set {_recipeId} to {st.machine::%{_key}%::recipe}
+		set {_outputId} to {st.machine::%{_key}%::outputId}
+		set {_outputAmount} to {st.machine::%{_key}%::outputAmount}
+		if {_fuel} is not set:
+			set {_fuel} to 0
+		if {_heat} is not set:
+			set {_heat} to 0
+		if {_autoFuelId} is not set:
+			set {_autoFuelId} to "unset"
+		st_gui_header({_p}, "Machine Panel: %{_machine}%")
+		st_ui_send({_p}, "stat", "State -> active %{_active}% | remaining %{_remaining}% ticks")
+		st_ui_send({_p}, "stat", "Progress -> %st_gui_progress_bar({_progress}, {_remaining}, 12)%")
+		st_ui_send({_p}, "stat", "Fuel/Heat -> fuel %{_fuel}% | heat %{_heat}%")
+		st_ui_send({_p}, "stat", "Mode -> %{st.machine::%{_key}%::mode}% | speed upgrade %{st.machine::%{_key}%::upgrade::speed}%/1")
+		st_ui_send({_p}, "stat", "Auto-refuel -> %{_autoFuel}% (%{_autoFuelId}%)")
+		st_gui_send_recipe_guide({_p}, st_gui_machine_recipe_type({_machine}), {_recipeId}, {_outputId}, {_outputAmount})
+		if lowercase {_machine} is "mixer":
+			st_ui_send({_p}, "nav", "Mode toggle -> sneak-right-click with tech_wrench")
+		else:
+			st_ui_send({_p}, "nav", "Mode toggle -> /stmachine autofuel <on|off|status>")
+		st_ui_send({_p}, "hint", "Use /stmachine info for raw state and /strecipe view <type> <id> for recipe details.")
+		stop
+
+	if st_machine_advanced_exists({_loc}) is true:
+		set {_key} to st_machine_advanced_key({_loc})
+		set {_machine} to {st.machine::%{_key}%::type}
+		set {_progress} to {st.machine::%{_key}%::progress}
+		set {_remaining} to {st.machine::%{_key}%::remaining}
+		set {_fuelKey} to st_location_key({_loc})
+		set {_fuel} to {st.power::%{_fuelKey}%}
+		set {_recipeId} to {st.machine::%{_key}%::recipe}
+		set {_outputId} to {st.machine::%{_key}%::outputId}
+		set {_outputAmount} to {st.machine::%{_key}%::outputAmount}
+		set {_qualityTier} to {st.machine::%{_key}%::qualityTier}
+		set {_byproductId} to {st.machine::%{_key}%::byproductId}
+		set {_byproductAmount} to {st.machine::%{_key}%::byproductAmount}
+		set {_autoFuel} to st_machine_auto_refuel_enabled({_loc})
+		set {_autoFuelId} to st_machine_auto_refuel_fuel_id({_loc})
+		if {_fuel} is not set:
+			set {_fuel} to 0
+		if {_qualityTier} is not set:
+			set {_qualityTier} to "standard"
+		if {_byproductId} is not set:
+			set {_byproductId} to "none"
+		if {_byproductAmount} is not set:
+			set {_byproductAmount} to 0
+		if {_autoFuelId} is not set:
+			set {_autoFuelId} to "unset"
+		st_gui_header({_p}, "Advanced Panel: %{_machine}%")
+		st_ui_send({_p}, "stat", "State -> active %{st.machine::%{_key}%::active}% | remaining %{_remaining}% ticks")
+		st_ui_send({_p}, "stat", "Progress -> %st_gui_progress_bar({_progress}, {_remaining}, 12)%")
+		st_ui_send({_p}, "stat", "Fuel/Energy -> buffer %{_fuel}% | upkeep %st_machine_advanced_effective_upkeep({_key}, {_machine})%/tick")
+		st_ui_send({_p}, "stat", "Queue/Mode -> %{st.machine::%{_key}%::mode}% | queue %st_machine_advanced_queue_size({_key})%/%st_machine_advanced_queue_limit({_key})%")
+		st_ui_send({_p}, "stat", "Auto-refuel -> %{_autoFuel}% (%{_autoFuelId}%)")
+		st_gui_send_recipe_guide({_p}, st_gui_machine_recipe_type({_machine}), {_recipeId}, {_outputId}, {_outputAmount})
+		st_ui_send({_p}, "data", "Quality/byproduct -> %{_qualityTier}% | %{_byproductId}% x%{_byproductAmount}%")
+		st_ui_send({_p}, "nav", "Mode controls -> /stadvanced autofuel <on|off|status>")
+		if lowercase {_machine} is "assembler":
+			st_ui_send({_p}, "nav", "Queue control -> right-click valid inputs to add recipes while busy")
+		st_ui_send({_p}, "hint", "Use /stadvanced info for raw state and /strecipe view <type> <id> for recipe details.")
+		stop
+
+	st_message_warn({_p}, "Target block is not a registered Simple Tech machine.")
+
+function st_gui_open_admin_balance(p: player):
+	st_gui_touch_session({_p})
+	st_gui_header({_p}, "Admin Balance Menu")
+	st_balance_report({_p})
+	st_ui_send({_p}, "nav", "Quick keys -> /stbalance duration::machine::crusher")
+	st_ui_send({_p}, "nav", "Quick keys -> /stbalance duration::machine::assembler 1.2")
+	st_ui_send({_p}, "nav", "Quick keys -> /stbalance econ::maintenance::fabricator 5")
+	st_ui_send({_p}, "hint", "Use /stadmin economy status to compare economy hook output.")
+
+function st_gui_open_admin_inspector(p: player, loc: location):
+	st_gui_touch_session({_p})
+	if {_loc} is not set:
+		st_message_warn({_p}, "Look at a machine block first.")
+		stop
+	st_gui_header({_p}, "Admin Machine Inspector")
+	set {_accessKey} to st_access_key({_loc})
+	st_ui_send({_p}, "data", "Location -> %{_loc}%")
+	st_ui_send({_p}, "data", "Owner/public/shared -> %st_access_owner({_loc})% | %st_access_is_public({_loc})% | %size of {st.access::%{_accessKey}%::shared::*}%")
+	if st_machine_basic_exists({_loc}) is true:
+		set {_key} to st_machine_basic_key({_loc})
+		st_ui_send({_p}, "stat", "Machine -> basic %{st.machine::%{_key}%::type}% | bucket %{st.machine::%{_key}%::bucket}% | sleeping %{st.machine::%{_key}%::sleeping}%")
+		st_ui_send({_p}, "data", "Recipe/output -> %{st.machine::%{_key}%::recipe}% | %{st.machine::%{_key}%::outputId}% x%{st.machine::%{_key}%::outputAmount}%")
+		st_ui_send({_p}, "data", "Paused fuel -> %{st.machine::%{_key}%::pausedFuel}% | block type %{st.machine::%{_key}%::blockType}%")
+		stop
+	if st_machine_advanced_exists({_loc}) is true:
+		set {_key} to st_machine_advanced_key({_loc})
+		st_ui_send({_p}, "stat", "Machine -> advanced %{st.machine::%{_key}%::type}% | bucket %{st.machine::%{_key}%::bucket}% | sleeping %{st.machine::%{_key}%::sleeping}%")
+		st_ui_send({_p}, "data", "Recipe/output -> %{st.machine::%{_key}%::recipe}% | %{st.machine::%{_key}%::outputId}% x%{st.machine::%{_key}%::outputAmount}%")
+		st_ui_send({_p}, "data", "Queue/pattern -> %st_machine_advanced_queue_size({_key})% | %{st.machine::%{_key}%::pattern}%")
+		st_ui_send({_p}, "data", "Byproduct/quality -> %{st.machine::%{_key}%::byproductId}% x%{st.machine::%{_key}%::byproductAmount}% | %{st.machine::%{_key}%::qualityTier}%")
+		st_ui_send({_p}, "data", "Paused fuel -> %{st.machine::%{_key}%::pausedFuel}% | block type %{st.machine::%{_key}%::blockType}%")
+		stop
+	st_ui_send({_p}, "warn", "Target is not a registered Simple Tech machine.")
+
+function st_gui_open_admin_debug(p: player):
+	st_gui_touch_session({_p})
+	st_gui_header({_p}, "Admin Debug Menu")
+	st_ui_send({_p}, "nav", "/stdebug stats")
+	st_ui_send({_p}, "nav", "/stdebug inspect")
+	st_ui_send({_p}, "nav", "/stdebug forcefinish")
+	st_ui_send({_p}, "nav", "/stdebug audit")
+	st_ui_send({_p}, "nav", "/stadmin recover status")
+	st_ui_send({_p}, "nav", "/stadmin recover repair")
+	st_ui_send({_p}, "nav", "/stadmin reload-state all")
+	st_ui_send({_p}, "hint", "Target a machine before running inspect or forcefinish.")
+
+function st_gui_open_main(p: player):
+	st_gui_touch_session({_p})
+	set {st.gui::%uuid of {_p}%::screen} to "main"
+	delete {st.gui::%uuid of {_p}%::query}
+	delete {st.gui::%uuid of {_p}%::page}
+	delete {st.gui::%uuid of {_p}%::maxpage}
+
+	st_gui_header({_p}, "Simple Tech Main")
+	st_ui_send({_p}, "info", "&7Use one of these:")
+	st_ui_send({_p}, "nav", "&b/st help")
+	st_ui_send({_p}, "nav", "&b/st recipes")
+	st_ui_send({_p}, "nav", "&b/st recipes <query>")
+	st_ui_send({_p}, "nav", "&b/st recipes tier <0-3>")
+	st_ui_send({_p}, "nav", "&b/st recipes type <recipe_type>")
+	st_ui_send({_p}, "nav", "&b/st progress")
+	st_ui_send({_p}, "nav", "&b/st objective")
+	st_ui_send({_p}, "nav", "&b/st status")
+	st_ui_send({_p}, "nav", "&b/st machine")
+	if st_has_permission({_p}, "simpletech.admin") is true:
+		st_ui_send({_p}, "nav", "&b/st admin balance")
+		st_ui_send({_p}, "nav", "&b/st admin inspect")
+		st_ui_send({_p}, "nav", "&b/st admin debug")
+	st_ui_send({_p}, "hint", "&b/st next &7or &b/st prev &7(inside lists)")
+
+function st_gui_open_progress(p: player):
+	st_gui_touch_session({_p})
+	set {_tier} to {st.player::%uuid of {_p}%::tier}
+	if {_tier} is not set:
+		set {_tier} to 0
+
+	set {_basic} to size of {st.machine.basic.keys::*}
+	set {_advanced} to size of {st.machine.advanced.keys::*}
+	set {_recipes} to size of {st.recipe.ids::*}
+	set {_items} to size of {st.item.def.ids::*}
+
+	st_gui_header({_p}, "Simple Tech Progression")
+	st_ui_send({_p}, "stat", "&7Current tier: &b%{_tier}%")
+	st_ui_send({_p}, "stat", "&7Registered items: &b%{_items}%")
+	st_ui_send({_p}, "stat", "&7Registered recipes: &b%{_recipes}%")
+	st_ui_send({_p}, "stat", "&7Basic machines: &b%{_basic}%")
+	st_ui_send({_p}, "stat", "&7Advanced machines: &b%{_advanced}%")
+	st_ui_send({_p}, "hint", "&7Next step: build machine loops and unlock higher-tier recipes.")
+
+function st_gui_open_status(p: player):
+	st_gui_touch_session({_p})
+	set {_tier} to {st.player::%uuid of {_p}%::tier}
+	if {_tier} is not set:
+		set {_tier} to 0
+
+	st_gui_header({_p}, "Simple Tech Status")
+	st_ui_send({_p}, "stat", "&7Player tier: &b%{_tier}%")
+	st_ui_send({_p}, "stat", "&7Registered item IDs: &b%size of {st.item.def.ids::*}%")
+	st_ui_send({_p}, "stat", "&7Registered recipes: &b%size of {st.recipe.ids::*}%")
+
+function st_gui_open_recipe_browser(p: player, query: text, page: number):
+	st_gui_touch_session({_p})
+	set {_q} to lowercase {_query}
+	if {_q} is "":
+		set {_q} to "all"
+
+	if {_q} is "all":
+		set {_matches::*} to {st.recipe.ids::*}
+	else if {_q} starts with "tier:":
+		set {_tierText} to {_q}
+		replace "tier:" in {_tierText} with ""
+		set {_tier} to {_tierText} parsed as number
+		if {_tier} is not set:
+			set {_tier} to 0
+		delete {_matches::*}
+		loop {st.recipe.ids::*}:
+			set {_parts::*} to split loop-value at "::"
+			if size of {_parts::*} >= 2:
+				set {_type} to {_parts::1}
+				set {_id} to {_parts::2}
+				set {_unlock} to st_recipe_unlock_tier({_type}, {_id})
+				if {_unlock} is {_tier}:
+					add loop-value to {_matches::*}
+	else if {_q} starts with "type:":
+		set {_typeFilter} to {_q}
+		replace "type:" in {_typeFilter} with ""
+		delete {_matches::*}
+		loop {st.recipe.ids::*}:
+			set {_parts::*} to split loop-value at "::"
+			if size of {_parts::*} >= 2:
+				if {_parts::1} is {_typeFilter}:
+					add loop-value to {_matches::*}
+	else:
+		set {_matches::*} to st_recipe_search_ids({_q})
+
+	if size of {_matches::*} is 0:
+		st_gui_header({_p}, "Recipe Browser")
+		st_ui_send({_p}, "warn", "&eNo recipes found for query: &f%{_q}%")
+		stop
+
+	set {_count} to size of {_matches::*}
+	set {_maxPage} to 1
+	while {_maxPage} * {@st-gui-page-size} < {_count}:
+		add 1 to {_maxPage}
+
+	if {_page} < 1:
+		set {_page} to 1
+	if {_page} > {_maxPage}:
+		set {_page} to {_maxPage}
+
+	set {st.gui::%uuid of {_p}%::screen} to "recipes"
+	set {st.gui::%uuid of {_p}%::query} to {_q}
+	set {st.gui::%uuid of {_p}%::page} to {_page}
+	set {st.gui::%uuid of {_p}%::maxpage} to {_maxPage}
+
+	st_gui_header({_p}, "Recipe Browser &7(%{_page}%/%{_maxPage}%)")
+	set {_start} to ({_page} - 1) * {@st-gui-page-size} + 1
+	set {_end} to {_start} + {@st-gui-page-size} - 1
+
+	set {_i} to 0
+	loop {_matches::*}:
+		add 1 to {_i}
+		if {_i} >= {_start}:
+			if {_i} <= {_end}:
+				st_ui_send({_p}, "data", "&b%loop-value%")
+
+	st_ui_send({_p}, "hint", "&7Use &b/st next &7or &b/st prev &7to browse pages.")
+	st_ui_send({_p}, "hint", "&7Use &b/strecipe view <type> <id> &7for full details.")
+
+function st_gui_is_st_menu(title: text) :: boolean:
+	if {_title} is "{@st-gui-title-main}":
+		return true
+	return false
+
+command /st [<text>] [<text>] [<text>]:
+	trigger:
+		if st_require_permission(player, "{@st-gui-permission}") is false:
+			stop
+
+		if arg-1 is not set:
+			st_gui_open_main(player)
+			stop
+
+		if arg-1 is "help":
+			st_gui_open_main(player)
+			stop
+
+		if arg-1 is "status":
+			st_gui_open_status(player)
+			stop
+
+		if arg-1 is "progress":
+			set {st.player::%uuid of player%::objective::progressViewed} to true
+			st_gui_open_progress(player)
+			stop
+
+		if arg-1 is "objective":
+			if arg-2 is not set:
+				st_objective_show(player)
+				stop
+			if arg-2 is "current":
+				st_objective_show(player)
+				stop
+			if arg-2 is "next":
+				st_objective_show_next(player)
+				stop
+			if arg-2 is "walkthrough":
+				st_objective_walkthrough(player)
+				stop
+			if arg-2 is "status":
+				st_message(player, "Objective reminders: %st_objective_reminders_enabled()%")
+				st_objective_show(player)
+				stop
+			st_message_warn(player, "Usage: /st objective [current|next|walkthrough|status]")
+			stop
+
+		if arg-1 is "recipes":
+			set {_query} to "all"
+			if arg-2 is set:
+				if arg-2 is "tier":
+					if arg-3 is set:
+						set {_query} to "tier:%arg-3%"
+					else:
+						st_message_warn(player, "Usage: /st recipes tier <0-3>")
+						stop
+				else if arg-2 is "type":
+					if arg-3 is set:
+						set {_query} to "type:%arg-3%"
+					else:
+						st_message_warn(player, "Usage: /st recipes type <recipe_type>")
+						stop
+				else:
+					set {_query} to arg-2
+			st_gui_open_recipe_browser(player, {_query}, 1)
+			stop
+
+		if arg-1 is "machine":
+			st_gui_open_machine_panel(player, target block)
+			stop
+
+		if arg-1 is "admin":
+			if st_require_permission(player, "simpletech.admin") is false:
+				stop
+			if arg-2 is not set:
+				st_message(player, "Usage: /st admin <balance|inspect|debug>")
+				stop
+			if arg-2 is "balance":
+				st_gui_open_admin_balance(player)
+				stop
+			if arg-2 is "inspect":
+				st_gui_open_admin_inspector(player, target block)
+				stop
+			if arg-2 is "debug":
+				st_gui_open_admin_debug(player)
+				stop
+			st_message_warn(player, "Usage: /st admin <balance|inspect|debug>")
+			stop
+
+		st_message_warn(player, "Unknown subcommand. Use /st help")
+
+command /stnext:
+	trigger:
+		if st_require_permission(player, "{@st-gui-permission}") is false:
+			stop
+
+		if {st.gui::%uuid of player%::screen} is not "recipes":
+			st_message_warn(player, "You are not viewing a paged menu.")
+			stop
+
+		set {_page} to {st.gui::%uuid of player%::page}
+		if {_page} is not set:
+			set {_page} to 1
+		add 1 to {_page}
+		st_gui_open_recipe_browser(player, {st.gui::%uuid of player%::query}, {_page})
+
+command /stprev:
+	trigger:
+		if st_require_permission(player, "{@st-gui-permission}") is false:
+			stop
+
+		if {st.gui::%uuid of player%::screen} is not "recipes":
+			st_message_warn(player, "You are not viewing a paged menu.")
+			stop
+
+		set {_page} to {st.gui::%uuid of player%::page}
+		if {_page} is not set:
+			set {_page} to 1
+		remove 1 from {_page}
+		st_gui_open_recipe_browser(player, {st.gui::%uuid of player%::query}, {_page})
+
+on inventory click:
+	if event-inventory is set:
+		if st_gui_is_st_menu(name of event-inventory) is true:
+			cancel event
+
+on inventory drag:
+	if event-inventory is set:
+		if st_gui_is_st_menu(name of event-inventory) is true:
+			cancel event

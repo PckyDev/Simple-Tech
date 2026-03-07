@@ -1,0 +1,676 @@
+# Simple Tech Module: st_07_logistics
+options:
+	st-module-id: st_07_logistics
+	st-logistics-admin-permission: simpletech.admin
+	st-logistics-default-mode: whitelist
+	st-logistics-default-rate: 64
+	st-buffer-default-rate: 16
+
+function st_logistics_key(loc: location) :: text:
+	return st_location_key({_loc})
+
+function st_buffer_key(loc: location) :: text:
+	return st_location_key({_loc})
+
+function st_buffer_exists(loc: location) :: boolean:
+	set {_key} to st_buffer_key({_loc})
+	if {st.buffer::%{_key}%::loc} is set:
+		return true
+	return false
+
+function st_buffer_register(loc: location):
+	set {_key} to st_buffer_key({_loc})
+	set {st.buffer::%{_key}%::loc} to {_loc}
+	set {st.buffer::%{_key}%::rate} to {@st-buffer-default-rate}
+	set {st.buffer::%{_key}%::upgrade::throughput} to 0
+	if {_key} is not in {st.buffer.keys::*}:
+		add {_key} to {st.buffer.keys::*}
+
+function st_buffer_throughput_upgrade_cap() :: number:
+	return st_balance_upgrade_cap("buffer.throughput", 1)
+
+function st_buffer_effective_rate(loc: location) :: number:
+	set {_key} to st_buffer_key({_loc})
+	set {_rate} to {st.buffer::%{_key}%::rate}
+	if {_rate} is not set:
+		set {_rate} to {@st-buffer-default-rate}
+	set {_upgrade} to {st.buffer::%{_key}%::upgrade::throughput}
+	if {_upgrade} is not set:
+		set {_upgrade} to 0
+	if {_upgrade} > 0:
+		add {_upgrade} * 16 to {_rate}
+	return {_rate}
+
+function st_buffer_unregister(loc: location):
+	set {_key} to st_buffer_key({_loc})
+	remove {_key} from {st.buffer.keys::*}
+	delete {st.buffer::%{_key}%::*}
+
+function st_buffer_item_amount(loc: location, itemId: text) :: number:
+	set {_key} to st_buffer_key({_loc})
+	set {_amount} to {st.buffer::%{_key}%::items::%{_itemId}%}
+	if {_amount} is not set:
+		set {_amount} to 0
+	return {_amount}
+
+function st_buffer_add_item(loc: location, payload: item):
+	set {_key} to st_buffer_key({_loc})
+	set {_id} to st_logistics_item_id({_payload})
+	set {_amount} to amount of {_payload}
+	if {_amount} <= 0:
+		stop
+	if {_id} is not in {st.buffer::%{_key}%::ids::*}:
+		add {_id} to {st.buffer::%{_key}%::ids::*}
+	add {_amount} to {st.buffer::%{_key}%::items::%{_id}%}
+
+function st_buffer_remove_amount(loc: location, itemId: text, amountToRemove: number) :: boolean:
+	set {_key} to st_buffer_key({_loc})
+	set {_id} to lowercase {_itemId}
+	set {_have} to st_buffer_item_amount({_loc}, {_id})
+	if {_have} < {_amountToRemove}:
+		return false
+	remove {_amountToRemove} from {st.buffer::%{_key}%::items::%{_id}%}
+	if {st.buffer::%{_key}%::items::%{_id}%} <= 0:
+		delete {st.buffer::%{_key}%::items::%{_id}%}
+		remove {_id} from {st.buffer::%{_key}%::ids::*}
+	return true
+
+function st_buffer_first_id(loc: location) :: text:
+	set {_key} to st_buffer_key({_loc})
+	loop {st.buffer::%{_key}%::ids::*}:
+		set {_id} to loop-value
+		if st_buffer_item_amount({_loc}, {_id}) > 0:
+			return {_id}
+	return ""
+
+function st_logistics_build_item_by_id(itemId: text, amount: number) :: item:
+	set {_id} to lowercase {_itemId}
+	set {_built} to st_item_build({_id}, {_amount})
+	if {_built} is not air:
+		return {_built}
+	if {_id} is "raw_iron":
+		set {_built} to raw iron
+		set amount of {_built} to {_amount}
+		return {_built}
+	if {_id} is "iron_ingot":
+		set {_built} to iron ingot
+		set amount of {_built} to {_amount}
+		return {_built}
+	if {_id} is "copper_ingot":
+		set {_built} to copper ingot
+		set amount of {_built} to {_amount}
+		return {_built}
+	return air
+
+function st_buffer_push_tick(loc: location):
+	set {_id} to st_buffer_first_id({_loc})
+	if {_id} is "":
+		stop
+	set {_have} to st_buffer_item_amount({_loc}, {_id})
+	if {_have} <= 0:
+		stop
+	set {_rate} to st_buffer_effective_rate({_loc})
+	if {_rate} <= 0:
+		set {_rate} to {@st-buffer-default-rate}
+	set {_sendAmount} to {_have}
+	if {_sendAmount} > {_rate}:
+		set {_sendAmount} to {_rate}
+	set {_item} to st_logistics_build_item_by_id({_id}, {_sendAmount})
+	if {_item} is air:
+		stop
+	set {_target} to st_logistics_best_target({_loc}, {_item})
+	if {_target} is not set:
+		stop
+	if st_buffer_exists({_target}) is true:
+		st_buffer_add_item({_target}, {_item})
+		st_buffer_remove_amount({_loc}, {_id}, {_sendAmount})
+		stop
+	if st_machine_basic_try_auto_input({_target}, {_id}) is true:
+		st_buffer_remove_amount({_loc}, {_id}, 1)
+		stop
+
+function st_logistics_set_mode(loc: location, mode: text):
+	set {_key} to st_logistics_key({_loc})
+	set {st.logistics::%{_key}%::mode} to lowercase {_mode}
+
+function st_logistics_get_mode(loc: location) :: text:
+	set {_key} to st_logistics_key({_loc})
+	set {_mode} to {st.logistics::%{_key}%::mode}
+	if {_mode} is not set:
+		set {_mode} to "{@st-logistics-default-mode}"
+	return lowercase {_mode}
+
+function st_logistics_set_rate(loc: location, rate: number):
+	set {_key} to st_logistics_key({_loc})
+	if {_rate} < 1:
+		set {_rate} to 1
+	set {st.logistics::%{_key}%::rate} to {_rate}
+
+function st_logistics_set_io(loc: location, io: text):
+	set {_key} to st_logistics_key({_loc})
+	set {_io} to lowercase {_io}
+	set {st.logistics::%{_key}%::io} to {_io}
+
+function st_logistics_get_io(loc: location) :: text:
+	set {_key} to st_logistics_key({_loc})
+	set {_io} to {st.logistics::%{_key}%::io}
+	if {_io} is not set:
+		set {_io} to "any"
+	return lowercase {_io}
+
+function st_logistics_get_rate(loc: location) :: number:
+	set {_key} to st_logistics_key({_loc})
+	set {_rate} to {st.logistics::%{_key}%::rate}
+	if {_rate} is not set:
+		set {_rate} to {@st-logistics-default-rate}
+	return {_rate}
+
+function st_logistics_set_link(source: location, target: location):
+	set {_s} to st_logistics_key({_source})
+	set {st.logistics::%{_s}%::target} to {_target}
+	delete {st.logistics::%{_s}%::routes::*}
+	st_logistics_add_route({_source}, {_target}, 0)
+
+function st_logistics_add_route(source: location, target: location, priority: number):
+	set {_s} to st_logistics_key({_source})
+	set {_targetKey} to st_location_key({_target})
+	set {st.logistics::%{_s}%::target} to {_target}
+	set {st.logistics::%{_s}%::route::%{_targetKey}%::loc} to {_target}
+	set {st.logistics::%{_s}%::route::%{_targetKey}%::priority} to {_priority}
+	if {_targetKey} is not in {st.logistics::%{_s}%::routes::*}:
+		add {_targetKey} to {st.logistics::%{_s}%::routes::*}
+
+function st_logistics_clear_routes(source: location):
+	set {_s} to st_logistics_key({_source})
+	delete {st.logistics::%{_s}%::routes::*}
+	delete {st.logistics::%{_s}%::route::*}
+
+function st_logistics_clear_link(source: location):
+	set {_s} to st_logistics_key({_source})
+	delete {st.logistics::%{_s}%::target}
+	st_logistics_clear_routes({_source})
+
+function st_logistics_get_link(source: location) :: location:
+	set {_s} to st_logistics_key({_source})
+	return {st.logistics::%{_s}%::target}
+
+function st_logistics_route_count(source: location) :: number:
+	set {_s} to st_logistics_key({_source})
+	return size of {st.logistics::%{_s}%::routes::*}
+
+function st_logistics_best_target(source: location, payload: item) :: location:
+	set {_s} to st_logistics_key({_source})
+	set {_bestPriority} to -999999
+	delete {_best}
+	set {_id} to st_logistics_item_id({_payload})
+	loop {st.logistics::%{_s}%::routes::*}:
+		set {_targetKey} to loop-value
+		set {_target} to {st.logistics::%{_s}%::route::%{_targetKey}%::loc}
+		if {_target} is set:
+			if st_location_key({_target}) is not {_s}:
+				set {_io} to st_logistics_get_io({_source})
+				set {_ioOk} to false
+				if {_io} is "any":
+					set {_ioOk} to true
+				else:
+					set {_dir} to st_logistics_direction_between({_source}, {_target})
+					if {_dir} is {_io}:
+						set {_ioOk} to true
+				if {_ioOk} is true:
+					if st_logistics_allowed({_source}, {_id}) is true:
+						set {_priority} to {st.logistics::%{_s}%::route::%{_targetKey}%::priority}
+						if {_priority} is not set:
+							set {_priority} to 0
+						if {_priority} > {_bestPriority}:
+							set {_bestPriority} to {_priority}
+							set {_best} to {_target}
+	if {_best} is set:
+		return {_best}
+	return {st.logistics::%{_s}%::target}
+
+function st_logistics_allow_item(loc: location, itemId: text):
+	set {_key} to st_logistics_key({_loc})
+	if {_itemId} is not in {st.logistics::%{_key}%::allow::*}:
+		add lowercase {_itemId} to {st.logistics::%{_key}%::allow::*}
+
+function st_logistics_allow_tag(loc: location, tag: text):
+	set {_key} to st_logistics_key({_loc})
+	set {_tag} to lowercase {_tag}
+	if {_tag} is not in {st.logistics::%{_key}%::allowtag::*}:
+		add {_tag} to {st.logistics::%{_key}%::allowtag::*}
+
+function st_logistics_deny_item(loc: location, itemId: text):
+	set {_key} to st_logistics_key({_loc})
+	if {_itemId} is not in {st.logistics::%{_key}%::deny::*}:
+		add lowercase {_itemId} to {st.logistics::%{_key}%::deny::*}
+
+function st_logistics_deny_tag(loc: location, tag: text):
+	set {_key} to st_logistics_key({_loc})
+	set {_tag} to lowercase {_tag}
+	if {_tag} is not in {st.logistics::%{_key}%::denytag::*}:
+		add {_tag} to {st.logistics::%{_key}%::denytag::*}
+
+function st_logistics_clear_filters(loc: location):
+	set {_key} to st_logistics_key({_loc})
+	delete {st.logistics::%{_key}%::allow::*}
+	delete {st.logistics::%{_key}%::deny::*}
+	delete {st.logistics::%{_key}%::allowtag::*}
+	delete {st.logistics::%{_key}%::denytag::*}
+
+function st_logistics_item_category(itemId: text) :: text:
+	set {_id} to lowercase {_itemId}
+	if {_id} contains "plate":
+		return "plate"
+	if {_id} contains "wire":
+		return "wire"
+	if {_id} contains "coil":
+		return "coil"
+	if {_id} contains "casing":
+		return "machine_part"
+	if {_id} contains "upgrade":
+		return "upgrade"
+	if {_id} contains "raw":
+		return "material"
+	if {_id} contains "crushed":
+		return "material"
+	if {_id} contains "ingot":
+		return "material"
+	if {_id} contains "tool":
+		return "tool"
+	if {_id} contains "wrench":
+		return "tool"
+	if {_id} contains "hammer":
+		return "tool"
+	return "other"
+
+function st_logistics_allowed(loc: location, itemId: text) :: boolean:
+	set {_key} to st_logistics_key({_loc})
+	set {_mode} to st_logistics_get_mode({_loc})
+	set {_id} to lowercase {_itemId}
+	set {_tag} to st_logistics_item_category({_id})
+
+	if {_mode} is "blacklist":
+		if {_id} is in {st.logistics::%{_key}%::deny::*}:
+			return false
+		if {_tag} is in {st.logistics::%{_key}%::denytag::*}:
+			return false
+		return true
+
+	if size of {st.logistics::%{_key}%::allow::*} is 0:
+		if size of {st.logistics::%{_key}%::allowtag::*} is 0:
+			return true
+	if {_tag} is in {st.logistics::%{_key}%::allowtag::*}:
+		return true
+	if size of {st.logistics::%{_key}%::allow::*} is 0:
+		if size of {st.logistics::%{_key}%::allowtag::*} > 0:
+			return false
+		return true
+	if {_id} is in {st.logistics::%{_key}%::allow::*}:
+		return true
+	return false
+
+function st_logistics_direction_between(source: location, target: location) :: text:
+	set {_dx} to x-coordinate of {_target} - x-coordinate of {_source}
+	set {_dy} to y-coordinate of {_target} - y-coordinate of {_source}
+	set {_dz} to z-coordinate of {_target} - z-coordinate of {_source}
+	set {_adx} to {_dx}
+	set {_ady} to {_dy}
+	set {_adz} to {_dz}
+	if {_adx} < 0:
+		set {_adx} to {_adx} * -1
+	if {_ady} < 0:
+		set {_ady} to {_ady} * -1
+	if {_adz} < 0:
+		set {_adz} to {_adz} * -1
+
+	if {_ady} > {_adx}:
+		if {_ady} > {_adz}:
+			if {_dy} > 0:
+				return "up"
+			return "down"
+
+	if {_adx} >= {_adz}:
+		if {_dx} > 0:
+			return "east"
+		if {_dx} < 0:
+			return "west"
+		return "same"
+
+	if {_dz} > 0:
+		return "south"
+	if {_dz} < 0:
+		return "north"
+	return "same"
+
+function st_logistics_item_id(it: item) :: text:
+	if {_it} is air:
+		return ""
+	set {_id} to st_item_id({_it})
+	if {_id} is not "":
+		return {_id}
+	set {_type} to lowercase "%type of {_it}%"
+	replace " " in {_type} with "_"
+	return {_type}
+
+function st_logistics_dispatch(source: location, payload: item) :: boolean:
+	if {_payload} is air:
+		return false
+
+	set {_sourceKey} to st_logistics_key({_source})
+	set {_target} to st_logistics_best_target({_source}, {_payload})
+	if {_target} is not set:
+		return false
+
+	set {_targetKey} to st_logistics_key({_target})
+	if {_targetKey} is {_sourceKey}:
+		return false
+
+	set {_id} to st_logistics_item_id({_payload})
+	if st_logistics_allowed({_source}, {_id}) is false:
+		return false
+
+	set {_rate} to st_logistics_get_rate({_source})
+	set {_sendAmount} to amount of {_payload}
+	if {_sendAmount} > {_rate}:
+		set {_sendAmount} to {_rate}
+
+	set {_send} to {_payload}
+	set amount of {_send} to {_sendAmount}
+	if st_buffer_exists({_target}) is true:
+		st_buffer_add_item({_target}, {_send})
+	else:
+		drop {_send} at {_target}
+
+	if amount of {_payload} > {_sendAmount}:
+		set {_left} to {_payload}
+		set amount of {_left} to amount of {_payload} - {_sendAmount}
+		drop {_left} at {_source}
+
+	return true
+
+function st_logistics_denied(loc: location, itemId: text) :: boolean:
+	if st_logistics_allowed({_loc}, {_itemId}) is false:
+		return true
+	return false
+
+every 40 ticks:
+	loop {st.buffer.keys::*}:
+		set {_loc} to {st.buffer::%loop-value%::loc}
+		if {_loc} is set:
+			st_buffer_push_tick({_loc})
+
+command /stlogistics [<text>] [<text>]:
+	trigger:
+		if st_require_permission(player, "{@st-logistics-admin-permission}") is false:
+			stop
+
+		if arg-1 is not set:
+			st_message(player, "Usage: /stlogistics <setlink|addlink|clear|mode|io|allow|deny|allowtag|denytag|filters|rate|info>")
+			stop
+
+		if target block is not set:
+			st_message_warn(player, "Look at a source machine block first.")
+			stop
+
+		set {_source} to target block
+
+		if arg-1 is "setlink":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics setlink <x,y,z[,priority]>")
+				st_message_warn(player, "Example: /stlogistics setlink 120,64,-30,5")
+				stop
+			set {_parts::*} to split arg-2 at ","
+			if size of {_parts::*} is not 3:
+				if size of {_parts::*} is not 4:
+					st_message_warn(player, "Coordinates must be x,y,z or x,y,z,priority")
+					stop
+			set {_x} to {_parts::1} parsed as number
+			set {_y} to {_parts::2} parsed as number
+			set {_z} to {_parts::3} parsed as number
+			set {_priority} to 0
+			if size of {_parts::*} is 4:
+				set {_priority} to {_parts::4} parsed as number
+				if {_priority} is not set:
+					st_message_warn(player, "Priority must be a number.")
+					stop
+			if {_x} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			if {_y} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			if {_z} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			set {_target} to location({_x}, {_y}, {_z}, world of player)
+			if st_location_key({_source}) is st_location_key({_target}):
+				st_message_warn(player, "Source and target cannot be the same block.")
+				stop
+			st_logistics_set_link({_source}, {_target})
+			st_logistics_add_route({_source}, {_target}, {_priority})
+			st_message_ok(player, "Linked source to %{_x}%,%{_y}%,%{_z}% with priority %{_priority}%.")
+			stop
+
+		if arg-1 is "addlink":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics addlink <x,y,z[,priority]>")
+				st_message_warn(player, "Example: /stlogistics addlink 120,64,-30,10")
+				stop
+			set {_parts::*} to split arg-2 at ","
+			if size of {_parts::*} is not 3:
+				if size of {_parts::*} is not 4:
+					st_message_warn(player, "Coordinates must be x,y,z or x,y,z,priority")
+					stop
+			set {_x} to {_parts::1} parsed as number
+			set {_y} to {_parts::2} parsed as number
+			set {_z} to {_parts::3} parsed as number
+			set {_priority} to 0
+			if size of {_parts::*} is 4:
+				set {_priority} to {_parts::4} parsed as number
+			if {_x} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			if {_y} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			if {_z} is not set:
+				st_message_warn(player, "Invalid coordinates.")
+				stop
+			if {_priority} is not set:
+				st_message_warn(player, "Priority must be a number.")
+				stop
+			set {_target} to location({_x}, {_y}, {_z}, world of player)
+			if st_location_key({_source}) is st_location_key({_target}):
+				st_message_warn(player, "Source and target cannot be the same block.")
+				stop
+			st_logistics_add_route({_source}, {_target}, {_priority})
+			st_message_ok(player, "Added route to %{_x}%,%{_y}%,%{_z}% with priority %{_priority}%.")
+			stop
+
+		if arg-1 is "clear":
+			st_logistics_clear_link({_source})
+			st_message_ok(player, "Link cleared.")
+			stop
+
+		if arg-1 is "mode":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics mode <whitelist|blacklist>")
+				stop
+			set {_m} to lowercase arg-2
+			if {_m} is not "whitelist":
+				if {_m} is not "blacklist":
+					st_message_warn(player, "Mode must be whitelist or blacklist.")
+					stop
+			st_logistics_set_mode({_source}, {_m})
+			st_message_ok(player, "Logistics mode set to %{_m}%.")
+			stop
+
+		if arg-1 is "io":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics io <any|north|south|east|west|up|down>")
+				stop
+			set {_io} to lowercase arg-2
+			if {_io} is not "any":
+				if {_io} is not "north":
+					if {_io} is not "south":
+						if {_io} is not "east":
+							if {_io} is not "west":
+								if {_io} is not "up":
+									if {_io} is not "down":
+										st_message_warn(player, "Invalid io direction.")
+										stop
+			st_logistics_set_io({_source}, {_io})
+			st_message_ok(player, "Logistics IO direction set to %{_io}%.")
+			stop
+
+		if arg-1 is "allow":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics allow <itemId>")
+				stop
+			st_logistics_allow_item({_source}, lowercase arg-2)
+			st_message_ok(player, "Allowed item ID: %arg-2%")
+			stop
+
+		if arg-1 is "deny":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics deny <itemId>")
+				stop
+			st_logistics_deny_item({_source}, lowercase arg-2)
+			st_message_ok(player, "Denied item ID: %arg-2%")
+			stop
+
+		if arg-1 is "allowtag":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics allowtag <material|plate|wire|coil|machine_part|upgrade|tool|other>")
+				stop
+			st_logistics_allow_tag({_source}, lowercase arg-2)
+			st_message_ok(player, "Allowed category tag: %arg-2%")
+			stop
+
+		if arg-1 is "denytag":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics denytag <material|plate|wire|coil|machine_part|upgrade|tool|other>")
+				stop
+			st_logistics_deny_tag({_source}, lowercase arg-2)
+			st_message_ok(player, "Denied category tag: %arg-2%")
+			stop
+
+		if arg-1 is "filters":
+			st_logistics_clear_filters({_source})
+			st_message_ok(player, "Cleared allow/deny filters.")
+			stop
+
+		if arg-1 is "rate":
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stlogistics rate <itemsPerTransfer>")
+				stop
+			set {_rate} to arg-2 parsed as number
+			if {_rate} is not set:
+				st_message_warn(player, "Rate must be a number.")
+				stop
+			st_logistics_set_rate({_source}, {_rate})
+			st_message_ok(player, "Transfer rate set to %{_rate}%.")
+			stop
+
+		if arg-1 is "info":
+			set {_mode} to st_logistics_get_mode({_source})
+			set {_rate} to st_logistics_get_rate({_source})
+			set {_io} to st_logistics_get_io({_source})
+			set {_target} to st_logistics_get_link({_source})
+			set {_key} to st_logistics_key({_source})
+			set {_routes} to st_logistics_route_count({_source})
+			send "&7Mode: &e%{_mode}%" to player
+			send "&7IO: &e%{_io}%" to player
+			send "&7Rate: &e%{_rate}%" to player
+			send "&7Route count: &e%{_routes}%" to player
+			send "&7Allow filters: &e%size of {st.logistics::%{_key}%::allow::*}%" to player
+			send "&7Deny filters: &e%size of {st.logistics::%{_key}%::deny::*}%" to player
+			send "&7Allow tags: &e%size of {st.logistics::%{_key}%::allowtag::*}%" to player
+			send "&7Deny tags: &e%size of {st.logistics::%{_key}%::denytag::*}%" to player
+			send "&7Linked target: &e%{_target}%" to player
+			stop
+
+		st_message_warn(player, "Unknown action. Use /stlogistics <setlink|addlink|clear|mode|io|allow|deny|allowtag|denytag|filters|rate|info>")
+
+command /stbuffer [<text>]:
+	trigger:
+		if st_require_permission(player, "{@st-logistics-admin-permission}") is false:
+			stop
+		if arg-1 is not set:
+			st_message(player, "Usage: /stbuffer <set|remove|info|list>")
+			stop
+
+		if arg-1 is "list":
+			st_message(player, "Registered buffers:")
+			loop {st.buffer.keys::*}:
+				send "&8- &b%loop-value%" to player
+			stop
+
+		if target block is not set:
+			st_message_warn(player, "Look at a block first.")
+			stop
+		set {_loc} to target block
+
+		if arg-1 is "set":
+			st_buffer_register({_loc})
+			st_access_set_owner({_loc}, player)
+			st_message_ok(player, "Registered virtual buffer at target block.")
+			stop
+
+		if arg-1 is "remove":
+			if st_buffer_exists({_loc}) is false:
+				st_message_warn(player, "Target block is not a registered buffer.")
+				stop
+			set {_confirmKey} to "buffer-remove:%st_buffer_key({_loc})%"
+			if st_confirm_action(player, {_confirmKey}, "remove virtual buffer at target block") is false:
+				stop
+			st_buffer_unregister({_loc})
+			st_message_ok(player, "Buffer removed.")
+			stop
+
+		if arg-1 is "info":
+			if st_buffer_exists({_loc}) is false:
+				st_message_warn(player, "Target block is not a registered buffer.")
+				stop
+			set {_key} to st_buffer_key({_loc})
+			set {_first} to st_buffer_first_id({_loc})
+			send "&7Buffer Items: &e%size of {st.buffer::%{_key}%::ids::*}%" to player
+			send "&7First Cached ID: &e%{_first}%" to player
+			send "&7Throughput Upgrade: &e%{st.buffer::%{_key}%::upgrade::throughput}%/%st_buffer_throughput_upgrade_cap()%" to player
+			send "&7Effective Rate: &e%st_buffer_effective_rate({_loc})%" to player
+			send "&7Linked target: &e%{st.logistics::%{_key}%::target}%" to player
+			stop
+
+		st_message_warn(player, "Unknown action. Use /stbuffer <set|remove|info|list>")
+
+on right click:
+	if clicked block is not set:
+		stop
+	set {_loc} to clicked block
+	if st_buffer_exists({_loc}) is false:
+		stop
+	if player is not sneaking:
+		stop
+	if st_access_require_use(player, {_loc}) is false:
+		cancel event
+		stop
+	set {_heldId} to st_logistics_item_id(tool of player)
+	if {_heldId} is not "throughput_upgrade_1":
+		stop
+	cancel event
+	set {_key} to st_buffer_key({_loc})
+	set {_cap} to st_buffer_throughput_upgrade_cap()
+	set {_current} to {st.buffer::%{_key}%::upgrade::throughput}
+	if {_current} is not set:
+		set {_current} to 0
+	if {_current} >= {_cap}:
+		st_message_warn(player, "Buffer throughput upgrade cap reached.")
+		stop
+	set {st.buffer::%{_key}%::upgrade::throughput} to {_current} + 1
+	set {_held} to tool of player
+	if amount of {_held} > 1:
+		set amount of {_held} to amount of {_held} - 1
+		set tool of player to {_held}
+	else:
+		set tool of player to air
+	st_message_ok(player, "Applied Throughput Upgrade I to buffer.")

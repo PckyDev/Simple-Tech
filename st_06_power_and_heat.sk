@@ -1,0 +1,266 @@
+# Simple Tech Module: st_06_power_and_heat
+options:
+	st-module-id: st_06_power_and_heat
+	st-heat-loss-interval: 100 ticks
+	st-upkeep-basic-default: 1
+	st-upkeep-advanced-default: 1
+	st-default-fuel-coal: 16
+	st-default-fuel-charcoal: 16
+	st-default-fuel-coal-block: 160
+	st-default-fuel-blaze-rod: 24
+	st-default-fuel-lava-bucket: 200
+	st-default-fuel-heat-briquette: 48
+	st-default-fuel-thermal-cell: 320
+
+function st_machine_energy_key(loc: location) :: text:
+	return st_location_key({_loc})
+
+function st_power_get(key: text) :: number:
+	if {st.power::%{_key}%} is not set:
+		set {st.power::%{_key}%} to 0
+	return {st.power::%{_key}%}
+
+function st_power_add(key: text, amount: number):
+	if {st.power::%{_key}%} is not set:
+		set {st.power::%{_key}%} to 0
+	add {_amount} to {st.power::%{_key}%}
+
+function st_power_take(key: text, amount: number) :: boolean:
+	if {st.power::%{_key}%} is not set:
+		set {st.power::%{_key}%} to 0
+	if {st.power::%{_key}%} < {_amount}:
+		return false
+	remove {_amount} from {st.power::%{_key}%}
+	return true
+
+function st_heat_get(key: text) :: number:
+	if {st.heat::%{_key}%} is not set:
+		set {st.heat::%{_key}%} to 0
+	return {st.heat::%{_key}%}
+
+function st_heat_add(key: text, amount: number):
+	if {st.heat::%{_key}%} is not set:
+		set {st.heat::%{_key}%} to 0
+	add {_amount} to {st.heat::%{_key}%}
+
+function st_machine_fuel_points(loc: location) :: number:
+	set {_k} to st_machine_energy_key({_loc})
+	return st_power_get({_k})
+
+function st_machine_add_fuel(loc: location, points: number):
+	if {_points} <= 0:
+		stop
+	set {_k} to st_machine_energy_key({_loc})
+	st_power_add({_k}, {_points})
+	st_heat_add({_k}, {_points})
+
+function st_machine_take_fuel(loc: location, points: number) :: boolean:
+	if {_points} <= 0:
+		return true
+	set {_k} to st_machine_energy_key({_loc})
+	return st_power_take({_k}, {_points})
+
+function st_machine_auto_refuel_set_enabled(loc: location, state: boolean):
+	set {_key} to st_location_key({_loc})
+	set {st.machine.autofuel::%{_key}%::enabled} to {_state}
+
+function st_machine_auto_refuel_enabled(loc: location) :: boolean:
+	set {_key} to st_location_key({_loc})
+	if {st.machine.autofuel::%{_key}%::enabled} is true:
+		return true
+	return false
+
+function st_machine_auto_refuel_set_fuel_id(loc: location, fuelId: text):
+	set {_key} to st_location_key({_loc})
+	set {st.machine.autofuel::%{_key}%::fuel} to lowercase {_fuelId}
+
+function st_machine_auto_refuel_fuel_id(loc: location) :: text:
+	set {_key} to st_location_key({_loc})
+	set {_id} to {st.machine.autofuel::%{_key}%::fuel}
+	if {_id} is not set:
+		return ""
+	return lowercase {_id}
+
+function st_machine_auto_refuel_source(loc: location, fuelId: text) :: location:
+	set {_sourceKey} to st_logistics_key({_loc})
+	loop {st.logistics::%{_sourceKey}%::routes::*}:
+		set {_targetKey} to loop-value
+		set {_target} to {st.logistics::%{_sourceKey}%::route::%{_targetKey}%::loc}
+		if {_target} is set:
+			if st_buffer_exists({_target}) is true:
+				if st_buffer_item_amount({_target}, {_fuelId}) > 0:
+					return {_target}
+	set {_fallback} to {st.logistics::%{_sourceKey}%::target}
+	if {_fallback} is set:
+		if st_buffer_exists({_fallback}) is true:
+			if st_buffer_item_amount({_fallback}, {_fuelId}) > 0:
+				return {_fallback}
+	return {_fallback}
+
+function st_machine_try_auto_refuel(loc: location) :: boolean:
+	if st_machine_auto_refuel_enabled({_loc}) is false:
+		return false
+	set {_fuelId} to st_machine_auto_refuel_fuel_id({_loc})
+	if {_fuelId} is "":
+		return false
+	set {_item} to st_logistics_build_item_by_id({_fuelId}, 1)
+	if {_item} is air:
+		return false
+	set {_value} to st_fuel_value_for_item({_item})
+	if {_value} <= 0:
+		return false
+	set {_bufferLoc} to st_machine_auto_refuel_source({_loc}, {_fuelId})
+	if {_bufferLoc} is not set:
+		return false
+	if st_buffer_remove_amount({_bufferLoc}, {_fuelId}, 1) is false:
+		return false
+	set {_byproductId} to st_fuel_byproduct_id({_item})
+	st_machine_add_fuel({_loc}, {_value})
+	if {_byproductId} is not "":
+		if random integer between 1 and 100 <= 20:
+			set {_byproduct} to st_item_build({_byproductId}, 1)
+			if {_byproduct} is not air:
+				drop {_byproduct} at {_loc}
+	st_machine_feedback_actionbar({_loc}, "&aAuto-refueled&7 with %{_fuelId}%")
+	return true
+
+function st_machine_consume_fuel(loc: location, points: number) :: boolean:
+	if {_points} <= 0:
+		return true
+	if st_machine_take_fuel({_loc}, {_points}) is true:
+		return true
+	if st_machine_try_auto_refuel({_loc}) is true:
+		if st_machine_take_fuel({_loc}, {_points}) is true:
+			return true
+	return false
+
+function st_machine_active_upkeep_cost(machine: text) :: number:
+	set {_m} to lowercase {_machine}
+	set {_cost} to 0
+
+	if {_m} is "crusher":
+		set {_cost} to {@st-upkeep-basic-default}
+	else if {_m} is "press":
+		set {_cost} to {@st-upkeep-basic-default}
+	else if {_m} is "mixer":
+		set {_cost} to {@st-upkeep-basic-default}
+	else if {_m} is "assembler":
+		set {_cost} to {@st-upkeep-advanced-default}
+	else if {_m} is "refinery":
+		set {_cost} to {@st-upkeep-advanced-default}
+	else if {_m} is "electrolyzer":
+		set {_cost} to {@st-upkeep-advanced-default}
+	else if {_m} is "fabricator":
+		set {_cost} to {@st-upkeep-advanced-default}
+
+	set {_cfg} to {st.config::upkeep::%{_m}%}
+	if {_cfg} is set:
+		set {_cost} to {_cfg}
+
+	if {_cost} < 0:
+		set {_cost} to 0
+	return {_cost}
+
+function st_machine_tick_upkeep(loc: location, machine: text) :: boolean:
+	set {_cost} to st_machine_active_upkeep_cost({_machine})
+	if {_cost} <= 0:
+		return true
+	return st_machine_take_fuel({_loc}, {_cost})
+
+function st_fuel_value_for_item(it: item) :: number:
+	if {_it} is air:
+		return 0
+
+	set {_id} to st_item_id({_it})
+	if {_id} is "":
+		set {_id} to lowercase "%type of {_it}%"
+		replace " " in {_id} with "_"
+
+	if {_id} is "coal":
+		return {@st-default-fuel-coal}
+	if {_id} is "charcoal":
+		return {@st-default-fuel-charcoal}
+	if {_id} is "coal_block":
+		return {@st-default-fuel-coal-block}
+	if {_id} is "blaze_rod":
+		return {@st-default-fuel-blaze-rod}
+	if {_id} is "lava_bucket":
+		return {@st-default-fuel-lava-bucket}
+	if {_id} is "heat_briquette":
+		return {@st-default-fuel-heat-briquette}
+	if {_id} is "thermal_cell":
+		return {@st-default-fuel-thermal-cell}
+
+	return 0
+
+function st_fuel_take_one_from_hand(p: player):
+	set {_held} to tool of {_p}
+	if {_held} is air:
+		stop
+	if amount of {_held} > 1:
+		set amount of {_held} to amount of {_held} - 1
+		set tool of {_p} to {_held}
+		stop
+	set tool of {_p} to air
+
+function st_fuel_byproduct_id(it: item) :: text:
+	set {_id} to st_item_id({_it})
+	if {_id} is "":
+		set {_id} to lowercase "%type of {_it}%"
+		replace " " in {_id} with "_"
+	if {_id} is "coal":
+		return "ash"
+	if {_id} is "charcoal":
+		return "ash"
+	if {_id} is "heat_briquette":
+		return "ash"
+	if {_id} is "thermal_cell":
+		return "spent_filter"
+	return ""
+
+function st_machine_try_add_fuel_from_hand(p: player, loc: location) :: boolean:
+	set {_held} to tool of {_p}
+	if {_held} is air:
+		return false
+
+	set {_value} to st_fuel_value_for_item({_held})
+	if {_value} <= 0:
+		return false
+	set {_byproductId} to st_fuel_byproduct_id({_held})
+	set {_fuelId} to st_item_id({_held})
+	if {_fuelId} is "":
+		set {_fuelId} to lowercase "%type of {_held}%"
+		replace " " in {_fuelId} with "_"
+
+	st_fuel_take_one_from_hand({_p})
+	st_machine_add_fuel({_loc}, {_value})
+	st_machine_auto_refuel_set_fuel_id({_loc}, {_fuelId})
+	if {_byproductId} is not "":
+		if random integer between 1 and 100 <= 20:
+			set {_byproduct} to st_item_build({_byproductId}, 1)
+			if {_byproduct} is not air:
+				drop {_byproduct} at {_loc}
+	return true
+
+function st_machine_passive_heat_tick(loc: location):
+	set {_heatGain} to st_world_heat_bonus({_loc})
+	if {_heatGain} > 0:
+		set {_k} to st_machine_energy_key({_loc})
+		st_heat_add({_k}, {_heatGain})
+
+every {@st-heat-loss-interval}:
+	loop {st.heat::*}:
+		set {_heat} to loop-value
+		if {_heat} > 0:
+			remove 1 from {_heat}
+			set {st.heat::%loop-index%} to {_heat}
+
+every 40 ticks:
+	loop {st.machine.basic.active::*}:
+		set {_loc} to {st.machine::%loop-value%::loc}
+		if {_loc} is set:
+			st_machine_passive_heat_tick({_loc})
+	loop {st.machine.advanced.active::*}:
+		set {_loc} to {st.machine::%loop-value%::loc}
+		if {_loc} is set:
+			st_machine_passive_heat_tick({_loc})

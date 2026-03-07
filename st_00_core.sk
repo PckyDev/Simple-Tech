@@ -1,0 +1,840 @@
+# Simple Tech Module: st_00_core
+options:
+	st-module-id: st_00_core
+	st-module-enabled-default: true
+	st-world-enabled-default: true
+	st-debug-mode-default: false
+	st-prefix: &8[&bSimpleTech&8]&r
+	st-prefix-ok: &8[&aSimpleTech&8]&r
+	st-prefix-warn: &8[&eSimpleTech&8]&r
+	st-prefix-error: &8[&cSimpleTech&8]&r
+	st-no-permission: &cYou do not have permission.
+	st-default-cooldown-seconds: 1
+	st-objective-hint-seconds: 120
+	st-objective-reminders-default: false
+	st-confirm-window-seconds: 10
+	st-feedback-actionbar-default: true
+	st-feedback-sounds-default: true
+	st-claim-hook-enabled-default: true
+	st-econ-enabled-default: false
+	st-econ-starting-balance: 250
+	st-balance-duration-crusher-default: 1
+	st-balance-duration-press-default: 1
+	st-balance-duration-mixer-default: 1.1
+	st-balance-duration-smelter-default: 1.15
+	st-balance-duration-assembler-default: 1.35
+	st-balance-duration-refinery-default: 1.5
+	st-balance-duration-electrolyzer-default: 1.65
+	st-balance-duration-fabricator-default: 1.9
+	st-balance-tier-1-default: 1
+	st-balance-tier-2-default: 0.85
+	st-balance-tier-3-default: 0.7
+	st-balance-upkeep-crusher-default: 1
+	st-balance-upkeep-press-default: 1
+	st-balance-upkeep-mixer-default: 1
+	st-balance-upkeep-smelter-default: 2
+	st-balance-upkeep-assembler-default: 2
+	st-balance-upkeep-refinery-default: 3
+	st-balance-upkeep-electrolyzer-default: 3
+	st-balance-upkeep-fabricator-default: 4
+	st-balance-econ-maintenance-crusher-default: 1
+	st-balance-econ-maintenance-press-default: 1
+	st-balance-econ-maintenance-mixer-default: 2
+	st-balance-econ-maintenance-smelter-default: 2
+	st-balance-econ-maintenance-assembler-default: 3
+	st-balance-econ-maintenance-refinery-default: 4
+	st-balance-econ-maintenance-electrolyzer-default: 4
+	st-balance-econ-maintenance-fabricator-default: 5
+	st-balance-econ-activation-default: 5
+	st-balance-econ-activation-assembler-default: 5
+	st-balance-econ-activation-refinery-default: 7
+	st-balance-econ-activation-electrolyzer-default: 7
+	st-balance-econ-activation-fabricator-default: 9
+	st-balance-upgradecap-assembler-capacity-default: 2
+	st-balance-upgradecap-buffer-throughput-default: 2
+
+on load:
+	if {st.config::debug-mode} is not set:
+		set {st.config::debug-mode} to {@st-debug-mode-default}
+
+	if {st.config::default-cooldown-seconds} is not set:
+		set {st.config::default-cooldown-seconds} to {@st-default-cooldown-seconds}
+
+	if {st.config::feedback::actionbar} is not set:
+		set {st.config::feedback::actionbar} to {@st-feedback-actionbar-default}
+
+	if {st.config::feedback::sounds} is not set:
+		set {st.config::feedback::sounds} to {@st-feedback-sounds-default}
+
+	if {st.config::objective::reminders} is not set:
+		set {st.config::objective::reminders} to {@st-objective-reminders-default}
+
+	if {st.config::claimhook::enabled} is not set:
+		set {st.config::claimhook::enabled} to {@st-claim-hook-enabled-default}
+
+	if {st.config::econ::enabled} is not set:
+		set {st.config::econ::enabled} to {@st-econ-enabled-default}
+
+	st_balance_load_defaults()
+
+	if {st.module.enabled::st_00_core} is not set:
+		set {st.module.enabled::st_00_core} to true
+
+function st_location_key(loc: location) :: text:
+	set {_world} to world of {_loc}
+	set {_x} to floor(x-coordinate of {_loc})
+	set {_y} to floor(y-coordinate of {_loc})
+	set {_z} to floor(z-coordinate of {_loc})
+	return "%{_world}%:%{_x}%:%{_y}%:%{_z}%"
+
+function st_location_key_parts(worldName: text, x: number, y: number, z: number) :: text:
+	return "%{_worldName}%:%{_x}%:%{_y}%:%{_z}%"
+
+function st_message(receiver: command sender, text: text):
+	send "{@st-prefix} %{_text}%" to {_receiver}
+
+function st_message_ok(receiver: command sender, text: text):
+	send "{@st-prefix-ok} %{_text}%" to {_receiver}
+
+function st_message_warn(receiver: command sender, text: text):
+	send "{@st-prefix-warn} %{_text}%" to {_receiver}
+
+function st_message_error(receiver: command sender, text: text):
+	send "{@st-prefix-error} %{_text}%" to {_receiver}
+
+function st_actionbar(p: player, text: text):
+	send action bar "%{_text}%" to {_p}
+
+function st_actionbar_uuid(uuidText: text, text: text):
+	if {_uuidText} is "":
+		stop
+	loop all players:
+		if "%uuid of loop-player%" is {_uuidText}:
+			st_actionbar(loop-player, {_text})
+
+function st_sound(p: player, soundId: text, volume: number, pitch: number):
+	play sound {_soundId} with volume {_volume} and pitch {_pitch} to {_p}
+
+function st_sound_uuid(uuidText: text, soundId: text, volume: number, pitch: number):
+	if {_uuidText} is "":
+		stop
+	loop all players:
+		if "%uuid of loop-player%" is {_uuidText}:
+			st_sound(loop-player, {_soundId}, {_volume}, {_pitch})
+
+function st_feedback_actionbar_enabled() :: boolean:
+	if {st.config::feedback::actionbar} is true:
+		return true
+	return false
+
+function st_feedback_sounds_enabled() :: boolean:
+	if {st.config::feedback::sounds} is true:
+		return true
+	return false
+
+function st_ui_icon(kind: text) :: text:
+	set {_kind} to lowercase {_kind}
+	if {_kind} is "nav":
+		return "&8[&b>&8]"
+	if {_kind} is "info":
+		return "&8[&3i&8]"
+	if {_kind} is "stat":
+		return "&8[&a*&8]"
+	if {_kind} is "hint":
+		return "&8[&e?&8]"
+	if {_kind} is "warn":
+		return "&8[&c!&8]"
+	if {_kind} is "data":
+		return "&8[&d#&8]"
+	return "&8[&7-&8]"
+
+function st_ui_send(receiver: command sender, kind: text, text: text):
+	send "%st_ui_icon({_kind})% %{_text}%" to {_receiver}
+
+function st_player_uuid_online(uuidText: text) :: boolean:
+	if {_uuidText} is "":
+		return false
+	loop all players:
+		if "%uuid of loop-player%" is {_uuidText}:
+			return true
+	return false
+
+function st_item_id_or_type(it: item) :: text:
+	if {_it} is air:
+		return ""
+	set {_id} to st_item_id({_it})
+	if {_id} is not "":
+		return {_id}
+	set {_id} to lowercase "%type of {_it}%"
+	replace " " in {_id} with "_"
+	return {_id}
+
+function st_econ_enabled() :: boolean:
+	if {st.config::econ::enabled} is true:
+		return true
+	return false
+
+function st_econ_balance(p: player) :: number:
+	set {_u} to "%uuid of {_p}%"
+	if {st.econ::balance::%{_u}%} is not set:
+		set {st.econ::balance::%{_u}%} to {@st-econ-starting-balance}
+	return {st.econ::balance::%{_u}%}
+
+function st_econ_add(p: player, amount: number):
+	if {_amount} <= 0:
+		stop
+	set {_u} to "%uuid of {_p}%"
+	if {st.econ::balance::%{_u}%} is not set:
+		set {st.econ::balance::%{_u}%} to {@st-econ-starting-balance}
+	add {_amount} to {st.econ::balance::%{_u}%}
+
+function st_econ_take(p: player, amount: number) :: boolean:
+	if {_amount} <= 0:
+		return true
+	set {_bal} to st_econ_balance({_p})
+	if {_bal} < {_amount}:
+		return false
+	remove {_amount} from {st.econ::balance::%uuid of {_p}%}
+	return true
+
+function st_econ_item_sell_value(itemId: text) :: number:
+	set {_id} to lowercase {_itemId}
+	set {_value} to {st.config::econ::sell::%{_id}%}
+	if {_value} is set:
+		if {_value} > 0:
+			return {_value}
+		return 0
+	if st_item_exists({_id}) is true:
+		set {_tier} to {st.item.def::%{_id}%::tier}
+		if {_tier} is not set:
+			set {_tier} to 1
+		return {_tier} * 4
+	if {_id} is "raw_iron":
+		return 2
+	if {_id} is "iron_ingot":
+		return 3
+	if {_id} is "copper_ingot":
+		return 3
+	if {_id} is "coal":
+		return 1
+	return 0
+
+function st_econ_machine_maintenance_cost(machine: text) :: number:
+	set {_machineName} to lowercase {_machine}
+	set {_value} to {st.config::econ::maintenance::%{_machineName}%}
+	if {_value} is set:
+		if {_value} > 0:
+			return {_value}
+		return 0
+	if {_machineName} is "crusher":
+		return 1
+	if {_machineName} is "press":
+		return 1
+	if {_machineName} is "mixer":
+		return 2
+	if {_machineName} is "smelter":
+		return 2
+	if {_machineName} is "assembler":
+		return 3
+	if {_machineName} is "refinery":
+		return 4
+	if {_machineName} is "electrolyzer":
+		return 4
+	if {_machineName} is "fabricator":
+		return 5
+	return 0
+
+function st_econ_advanced_activation_cost(recipeType: text, recipeId: text) :: number:
+	set {_value} to {st.config::econ::activate::%{_recipeType}%::%{_recipeId}%}
+	if {_value} is set:
+		if {_value} > 0:
+			return {_value}
+		return 0
+	set {_value} to {st.config::econ::activate::default}
+	if {_value} is set:
+		if {_value} > 0:
+			return {_value}
+		return 0
+	return 5
+
+function st_econ_require_machine_start(p: player, machine: text, recipeType: text, recipeId: text) :: boolean:
+	if st_econ_enabled() is false:
+		return true
+	set {_cost} to st_econ_machine_maintenance_cost({_machine})
+	if lowercase {_machine} is "assembler":
+		add st_econ_advanced_activation_cost({_recipeType}, {_recipeId}) to {_cost}
+	else if lowercase {_machine} is "refinery":
+		add st_econ_advanced_activation_cost({_recipeType}, {_recipeId}) to {_cost}
+	else if lowercase {_machine} is "electrolyzer":
+		add st_econ_advanced_activation_cost({_recipeType}, {_recipeId}) to {_cost}
+	else if lowercase {_machine} is "fabricator":
+		add st_econ_advanced_activation_cost({_recipeType}, {_recipeId}) to {_cost}
+	if {_cost} <= 0:
+		return true
+	if st_econ_take({_p}, {_cost}) is true:
+		st_message({_p}, "Economy charge applied: %{_cost}% credits. Balance: %st_econ_balance({_p})%")
+		return true
+	st_message_warn({_p}, "You need %{_cost}% credits to start this machine. Balance: %st_econ_balance({_p})%")
+	return false
+
+function st_machine_feedback_actionbar(loc: location, text: text):
+	if st_feedback_actionbar_enabled() is false:
+		stop
+	set {_owner} to st_access_owner({_loc})
+	if {_owner} is "":
+		stop
+	st_actionbar_uuid({_owner}, {_text})
+
+function st_machine_feedback_sound(loc: location, soundId: text, volume: number, pitch: number):
+	if st_feedback_sounds_enabled() is false:
+		stop
+	set {_owner} to st_access_owner({_loc})
+	if {_owner} is "":
+		stop
+	st_sound_uuid({_owner}, {_soundId}, {_volume}, {_pitch})
+
+function st_has_permission(p: player, node: text) :: boolean:
+	if {_p} has permission {_node}:
+		return true
+	return false
+
+function st_require_permission(p: player, node: text) :: boolean:
+	if st_has_permission({_p}, {_node}) is true:
+		return true
+	st_message_error({_p}, "{@st-no-permission}")
+	return false
+
+function st_module_enabled(module: text) :: boolean:
+	if {st.module.enabled::%{_module}%} is not set:
+		set {st.module.enabled::%{_module}%} to {@st-module-enabled-default}
+	if {st.module.enabled::%{_module}%} is true:
+		return true
+	return false
+
+function st_module_set_enabled(module: text, enabled: boolean):
+	set {st.module.enabled::%{_module}%} to {_enabled}
+
+function st_world_enabled(w: world) :: boolean:
+	set {_id} to "%{_w}%"
+	if {st.world.enabled::%{_id}%} is not set:
+		set {st.world.enabled::%{_id}%} to {@st-world-enabled-default}
+	if {st.world.enabled::%{_id}%} is true:
+		return true
+	return false
+
+function st_world_set_enabled(w: world, enabled: boolean):
+	set {_id} to "%{_w}%"
+	set {st.world.enabled::%{_id}%} to {_enabled}
+
+function st_debug_enabled() :: boolean:
+	if {st.config::debug-mode} is true:
+		return true
+	return false
+
+function st_debug(receiver: command sender, text: text):
+	if st_debug_enabled() is true:
+		send "&8[&dST Debug&8]&7 %{_text}%" to {_receiver}
+
+function st_config_set(key: text, value: object):
+	set {st.config::%{_key}%} to {_value}
+
+function st_config_get(key: text, fallback: object) :: object:
+	if {st.config::%{_key}%} is set:
+		return {st.config::%{_key}%}
+	return {_fallback}
+
+function st_item_token(id: text) :: text:
+	return "st:%{_id}%"
+
+function st_item_id_from_token(token: text) :: text:
+	set {_out} to {_token}
+	if {_out} starts with "st:":
+		replace "st:" in {_out} with ""
+		return {_out}
+	return ""
+
+function st_cooldown_ready(p: player, key: text, seconds: number) :: boolean:
+	set {_id} to uuid of {_p}
+	set {_limit} to "%{_seconds}% seconds" parsed as timespan
+
+	if {st.cooldown::%{_id}%::%{_key}%} is not set:
+		set {st.cooldown::%{_id}%::%{_key}%} to now
+		return true
+
+	if difference between now and {st.cooldown::%{_id}%::%{_key}%} < {_limit}:
+		return false
+
+	set {st.cooldown::%{_id}%::%{_key}%} to now
+	return true
+
+function st_lock_try(key: text, seconds: number) :: boolean:
+	set {_limit} to "%{_seconds}% seconds" parsed as timespan
+	if {st.lock::%{_key}%} is not set:
+		set {st.lock::%{_key}%} to now
+		return true
+	if difference between now and {st.lock::%{_key}%} >= {_limit}:
+		set {st.lock::%{_key}%} to now
+		return true
+	return false
+
+function st_confirm_action(p: player, key: text, label: text) :: boolean:
+	set {_u} to uuid of {_p}
+	set {_confirmSeconds} to {@st-confirm-window-seconds}
+	set {_limit} to "%{_confirmSeconds}% seconds" parsed as timespan
+	if {st.confirm::%{_u}%::%{_key}%} is set:
+		if difference between now and {st.confirm::%{_u}%::%{_key}%} < {_limit}:
+			delete {st.confirm::%{_u}%::%{_key}%}
+			return true
+	set {st.confirm::%{_u}%::%{_key}%} to now
+	st_message_warn({_p}, "Repeat within {@st-confirm-window-seconds} seconds to confirm: %{_label}%")
+	return false
+
+function st_econ_starting_balance() :: number:
+	return {@st-econ-starting-balance}
+
+function st_access_key(loc: location) :: text:
+	return st_location_key({_loc})
+
+function st_access_owner(loc: location) :: text:
+	set {_key} to st_access_key({_loc})
+	set {_owner} to {st.access::%{_key}%::owner}
+	if {_owner} is not set:
+		return ""
+	return "%{_owner}%"
+
+function st_access_set_owner(loc: location, p: player):
+	set {_key} to st_access_key({_loc})
+	set {st.access::%{_key}%::owner} to "%uuid of {_p}%"
+
+function st_access_is_owner(p: player, loc: location) :: boolean:
+	set {_owner} to st_access_owner({_loc})
+	if {_owner} is "":
+		return false
+	if {_owner} is "%uuid of {_p}%":
+		return true
+	return false
+
+function st_access_is_shared(p: player, loc: location) :: boolean:
+	set {_key} to st_access_key({_loc})
+	set {_name} to lowercase "%{_p}%"
+	if {_name} is in {st.access::%{_key}%::shared::*}:
+		return true
+	return false
+
+function st_access_share_name(loc: location, playerName: text):
+	set {_key} to st_access_key({_loc})
+	set {_name} to lowercase {_playerName}
+	if {_name} is not in {st.access::%{_key}%::shared::*}:
+		add {_name} to {st.access::%{_key}%::shared::*}
+
+function st_access_unshare_name(loc: location, playerName: text):
+	set {_key} to st_access_key({_loc})
+	remove lowercase {_playerName} from {st.access::%{_key}%::shared::*}
+
+function st_access_is_public(loc: location) :: boolean:
+	set {_key} to st_access_key({_loc})
+	if {st.access::%{_key}%::public} is true:
+		return true
+	return false
+
+function st_access_set_public(loc: location, state: boolean):
+	set {_key} to st_access_key({_loc})
+	set {st.access::%{_key}%::public} to {_state}
+
+function st_access_can_use(p: player, loc: location) :: boolean:
+	if st_has_permission({_p}, "simpletech.admin") is true:
+		return true
+	if st_access_is_public({_loc}) is true:
+		return true
+	if st_access_is_owner({_p}, {_loc}) is true:
+		return true
+	if st_access_is_shared({_p}, {_loc}) is true:
+		return true
+	set {_owner} to st_access_owner({_loc})
+	if {_owner} is "":
+		return true
+	return false
+
+function st_claim_hook_enabled() :: boolean:
+	if {st.config::claimhook::enabled} is true:
+		return true
+	return false
+
+function st_claim_hook_reason(loc: location, action: text) :: text:
+	set {_key} to st_access_key({_loc})
+	set {_action} to lowercase {_action}
+	set {_reason} to {st.claimhook::%{_key}%::reason::%{_action}%}
+	if {_reason} is set:
+		return "%{_reason}%"
+	set {_reason} to {st.claimhook::%{_key}%::reason}
+	if {_reason} is set:
+		return "%{_reason}%"
+	return "Blocked by external claim hook."
+
+function st_claim_hook_blocks(p: player, loc: location, action: text) :: boolean:
+	if st_claim_hook_enabled() is false:
+		return false
+	if st_has_permission({_p}, "simpletech.admin") is true:
+		return false
+	set {_key} to st_access_key({_loc})
+	set {_action} to lowercase {_action}
+	if {st.claimhook::%{_key}%::blocked} is true:
+		return true
+	if {st.claimhook::%{_key}%::blocked::%{_action}%} is true:
+		return true
+	return false
+
+function st_access_require_use(p: player, loc: location) :: boolean:
+	if st_claim_hook_blocks({_p}, {_loc}, "use") is true:
+		st_message_error({_p}, st_claim_hook_reason({_loc}, "use"))
+		return false
+	if st_access_can_use({_p}, {_loc}) is true:
+		return true
+	st_message_error({_p}, "You do not have access to this machine.")
+	return false
+
+function st_access_require_break(p: player, loc: location) :: boolean:
+	if st_claim_hook_blocks({_p}, {_loc}, "break") is true:
+		st_message_error({_p}, st_claim_hook_reason({_loc}, "break"))
+		return false
+	if st_access_can_use({_p}, {_loc}) is true:
+		return true
+	st_message_error({_p}, "You do not have permission to break this machine.")
+	return false
+
+function st_access_arm_break_override(p: player, loc: location):
+	set {_u} to uuid of {_p}
+	set {_key} to st_access_key({_loc})
+	set {st.access.overridebreak::%{_u}%::%{_key}%} to true
+
+function st_access_has_break_override(p: player, loc: location) :: boolean:
+	set {_u} to uuid of {_p}
+	set {_key} to st_access_key({_loc})
+	if {st.access.overridebreak::%{_u}%::%{_key}%} is true:
+		delete {st.access.overridebreak::%{_u}%::%{_key}%}
+		return true
+	return false
+
+function st_balance_number_default(path: text, value: number):
+	if {st.config::%{_path}%} is not set:
+		set {st.config::%{_path}%} to {_value}
+
+function st_balance_load_defaults():
+	st_balance_number_default("duration::machine::crusher", {@st-balance-duration-crusher-default})
+	st_balance_number_default("duration::machine::press", {@st-balance-duration-press-default})
+	st_balance_number_default("duration::machine::mixer", {@st-balance-duration-mixer-default})
+	st_balance_number_default("duration::machine::smelter", {@st-balance-duration-smelter-default})
+	st_balance_number_default("duration::machine::assembler", {@st-balance-duration-assembler-default})
+	st_balance_number_default("duration::machine::refinery", {@st-balance-duration-refinery-default})
+	st_balance_number_default("duration::machine::electrolyzer", {@st-balance-duration-electrolyzer-default})
+	st_balance_number_default("duration::machine::fabricator", {@st-balance-duration-fabricator-default})
+	st_balance_number_default("duration::tier::1", {@st-balance-tier-1-default})
+	st_balance_number_default("duration::tier::2", {@st-balance-tier-2-default})
+	st_balance_number_default("duration::tier::3", {@st-balance-tier-3-default})
+	st_balance_number_default("upkeep::crusher", {@st-balance-upkeep-crusher-default})
+	st_balance_number_default("upkeep::press", {@st-balance-upkeep-press-default})
+	st_balance_number_default("upkeep::mixer", {@st-balance-upkeep-mixer-default})
+	st_balance_number_default("upkeep::smelter", {@st-balance-upkeep-smelter-default})
+	st_balance_number_default("upkeep::assembler", {@st-balance-upkeep-assembler-default})
+	st_balance_number_default("upkeep::refinery", {@st-balance-upkeep-refinery-default})
+	st_balance_number_default("upkeep::electrolyzer", {@st-balance-upkeep-electrolyzer-default})
+	st_balance_number_default("upkeep::fabricator", {@st-balance-upkeep-fabricator-default})
+	st_balance_number_default("econ::activate::default", {@st-balance-econ-activation-default})
+	st_balance_number_default("econ::activate::machine_assembler::control_core_assembly", {@st-balance-econ-activation-assembler-default})
+	st_balance_number_default("econ::activate::machine_assembler::reinforced_casing_assembly", {@st-balance-econ-activation-assembler-default})
+	st_balance_number_default("econ::activate::machine_assembler::meter_assembly_advanced", {@st-balance-econ-activation-assembler-default})
+	st_balance_number_default("econ::activate::machine_refinery::slag_slurry_prep", {@st-balance-econ-activation-refinery-default})
+	st_balance_number_default("econ::activate::machine_refinery::slurry_separation", {@st-balance-econ-activation-refinery-default})
+	st_balance_number_default("econ::activate::machine_refinery::plate_treating", {@st-balance-econ-activation-refinery-default})
+	st_balance_number_default("econ::activate::machine_electrolyzer::gel_stabilizing", {@st-balance-econ-activation-electrolyzer-default})
+	st_balance_number_default("econ::activate::machine_electrolyzer::coil_energizing", {@st-balance-econ-activation-electrolyzer-default})
+	st_balance_number_default("econ::activate::machine_fabricator::matrix_fabrication", {@st-balance-econ-activation-fabricator-default})
+	st_balance_number_default("econ::activate::machine_fabricator::lens_polishing", {@st-balance-econ-activation-fabricator-default})
+	st_balance_number_default("econ::maintenance::crusher", {@st-balance-econ-maintenance-crusher-default})
+	st_balance_number_default("econ::maintenance::press", {@st-balance-econ-maintenance-press-default})
+	st_balance_number_default("econ::maintenance::mixer", {@st-balance-econ-maintenance-mixer-default})
+	st_balance_number_default("econ::maintenance::smelter", {@st-balance-econ-maintenance-smelter-default})
+	st_balance_number_default("econ::maintenance::assembler", {@st-balance-econ-maintenance-assembler-default})
+	st_balance_number_default("econ::maintenance::refinery", {@st-balance-econ-maintenance-refinery-default})
+	st_balance_number_default("econ::maintenance::electrolyzer", {@st-balance-econ-maintenance-electrolyzer-default})
+	st_balance_number_default("econ::maintenance::fabricator", {@st-balance-econ-maintenance-fabricator-default})
+	st_balance_number_default("econ::sell::raw_iron", 2)
+	st_balance_number_default("econ::sell::crushed_iron", 3)
+	st_balance_number_default("econ::sell::iron_ingot", 3)
+	st_balance_number_default("econ::sell::iron_plate", 5)
+	st_balance_number_default("econ::sell::copper_ingot", 3)
+	st_balance_number_default("econ::sell::copper_wire", 4)
+	st_balance_number_default("econ::sell::copper_coil", 6)
+	st_balance_number_default("econ::sell::slag", 1)
+	st_balance_number_default("econ::sell::heat_briquette", 4)
+	st_balance_number_default("econ::sell::slag_slurry", 2)
+	st_balance_number_default("econ::sell::spent_filter", 2)
+	st_balance_number_default("econ::sell::ash", 1)
+	st_balance_number_default("econ::sell::refined_flux", 8)
+	st_balance_number_default("econ::sell::electrolyte_gel", 10)
+	st_balance_number_default("econ::sell::ion_fragment", 11)
+	st_balance_number_default("econ::sell::treated_plate", 9)
+	st_balance_number_default("econ::sell::charged_mesh", 14)
+	st_balance_number_default("econ::sell::reinforced_casing", 14)
+	st_balance_number_default("econ::sell::control_core", 18)
+	st_balance_number_default("econ::sell::fabrication_matrix", 22)
+	st_balance_number_default("econ::sell::pristine_matrix", 28)
+	st_balance_number_default("econ::sell::precision_lens", 24)
+	st_balance_number_default("econ::sell::thermal_cell", 20)
+	st_balance_number_default("upgradecap::assembler.capacity", {@st-balance-upgradecap-assembler-capacity-default})
+	st_balance_number_default("upgradecap::buffer.throughput", {@st-balance-upgradecap-buffer-throughput-default})
+
+function st_balance_machine_duration_multiplier(machine: text) :: number:
+	set {_m} to lowercase {_machine}
+	set {_mult} to {st.config::duration::machine::%{_m}%}
+	if {_mult} is not set:
+		set {_mult} to 1
+	return {_mult}
+
+function st_balance_tier_duration_multiplier(tier: number) :: number:
+	set {_mult} to {st.config::duration::tier::%{_tier}%}
+	if {_mult} is set:
+		return {_mult}
+	if {_tier} <= 0:
+		return 1
+	if {_tier} is 1:
+		return 1
+	if {_tier} is 2:
+		return 0.85
+	if {_tier} >= 3:
+		return 0.7
+	return 1
+
+function st_balance_apply_duration(machine: text, baseDuration: number, tier: number) :: number:
+	set {_value} to {_baseDuration}
+	set {_value} to floor({_value} * st_balance_machine_duration_multiplier({_machine}) * st_balance_tier_duration_multiplier({_tier}))
+	if {_value} < 1:
+		set {_value} to 1
+	return {_value}
+
+function st_balance_upgrade_cap(key: text, fallback: number) :: number:
+	set {_cap} to {st.config::upgradecap::%{_key}%}
+	if {_cap} is not set:
+		set {_cap} to {_fallback}
+	if {_cap} < 0:
+		set {_cap} to 0
+	return {_cap}
+
+function st_player_has_custom_item(p: player, id: text, amountNeeded: number) :: boolean:
+	set {_need} to {_amountNeeded}
+	set {_targetId} to {_id}
+	if {_need} <= 0:
+		return true
+	set {_count} to 0
+	loop items in inventory of {_p}:
+		if loop-value is not air:
+			set {_itemId} to st_item_id(loop-value)
+			if {_itemId} is {_targetId}:
+				add amount of loop-value to {_count}
+	if {_count} >= {_need}:
+		return true
+	return false
+
+function st_player_has_raw_iron(p: player, amountNeeded: number) :: boolean:
+	set {_need} to {_amountNeeded}
+	if {_need} <= 0:
+		return true
+	set {_count} to 0
+	loop items in inventory of {_p}:
+		if loop-value is not air:
+			if type of loop-value is raw iron:
+				add amount of loop-value to {_count}
+	if {_count} >= {_need}:
+		return true
+	return false
+
+function st_objective_stage(p: player) :: number:
+	set {_u} to uuid of {_p}
+	set {_s} to {st.player::%{_u}%::objective::stage}
+	if {_s} is not set:
+		set {_s} to 1
+		set {st.player::%{_u}%::objective::stage} to 1
+	return {_s}
+
+function st_objective_set_stage(p: player, stage: number):
+	set {_u} to uuid of {_p}
+	set {st.player::%{_u}%::objective::stage} to {_stage}
+
+function st_objective_max_stage() :: number:
+	return 5
+
+function st_objective_reminders_enabled() :: boolean:
+	if {st.config::objective::reminders} is true:
+		return true
+	return false
+
+function st_player_holding_custom_item(p: player, id: text) :: boolean:
+	set {_held} to tool of {_p}
+	if {_held} is air:
+		return false
+	if st_item_id({_held}) is {_id}:
+		return true
+	return false
+
+function st_objective_text(stage: number) :: text:
+	if {_stage} is 1:
+		return "Collect &eraw iron&7 (x1)."
+	if {_stage} is 2:
+		return "Find and hold your &ePrimitive Hammer&7."
+	if {_stage} is 3:
+		return "Make &eCrushed Iron&7 using a &ePrimitive Hammer&7 and a &egrindstone&7."
+	if {_stage} is 4:
+		return "Make an &eIron Plate&7 using &e2 Crushed Iron&7 and an &eanvil&7."
+	if {_stage} is 5:
+		return "Run &e/st progress&7 to review your tech status."
+	return "Starter objectives complete. Move into machine automation."
+
+function st_objective_detail(stage: number) :: text:
+	if {_stage} is 1:
+		return "How: mine raw iron ore or pick up raw iron until you have at least 1 in your inventory."
+	if {_stage} is 2:
+		return "How: check your hotbar and inventory for the starter &ePrimitive Hammer&7. Put it in your hand once to confirm you are ready for manual processing."
+	if {_stage} is 3:
+		return "How: hold &ePrimitive Hammer&7, &esneak-right-click a grindstone&7, and keep raw iron in your inventory. This converts 1 raw iron into crushed_iron."
+	if {_stage} is 4:
+		return "How: hold &ePrimitive Hammer&7, &esneak-right-click an anvil&7, and keep &e2 Crushed Iron&7 in your inventory. This hand-presses them into 1 iron_plate."
+	if {_stage} is 5:
+		return "How: type &e/st progress&7 once. This opens your progression summary and completes the starter track."
+	return "Next step: start building your first Tier 1 machine loop."
+
+function st_objective_tip(stage: number) :: text:
+	if {_stage} is 1:
+		return "Tip: raw iron is the very first primitive resource used by the tutorial."
+	if {_stage} is 2:
+		return "Tip: new players receive a starter Primitive Hammer on first join. If you lose it, craft a replacement from &eraw_iron + stick&7."
+	if {_stage} is 3:
+		return "Tip: keep the hammer in your hand while using the grindstone. The raw iron only needs to be somewhere in your inventory."
+	if {_stage} is 4:
+		return "Tip: you need 2 crushed_iron for each iron_plate in the manual early-game loop."
+	if {_stage} is 5:
+		return "Tip: after this, use the progress screen to decide whether to place a crusher, press, mixer, or smelter next."
+	return "Tip: use &e/st recipes&7 and &e/st machine&7 to move into machine automation."
+
+function st_objective_walkthrough(p: player):
+	set {_max} to st_objective_max_stage()
+	st_message_ok({_p}, "Starter walkthrough")
+	set {_stage} to 1
+	while {_stage} <= {_max}:
+		st_message({_p}, "Step %{_stage}%/%{_max}%: %st_objective_text({_stage})%")
+		st_message({_p}, "%st_objective_detail({_stage})%")
+		st_message({_p}, "%st_objective_tip({_stage})%")
+		add 1 to {_stage}
+	st_message({_p}, "Use &e/st objective current&7 to resume from your current step at any time.")
+
+function st_objective_show_next(p: player):
+	set {_s} to st_objective_stage({_p})
+	set {_max} to st_objective_max_stage()
+	if {_s} > {_max}:
+		st_message_ok({_p}, "Starter objectives are already complete.")
+		stop
+	if {_s} >= {_max}:
+		st_message({_p}, "Next milestone: finish the starter track and begin your first Tier 1 machine loop.")
+		stop
+	set {_next} to {_s} + 1
+	st_message({_p}, "Next objective %{_next}%/%{_max}%: %st_objective_text({_next})%")
+	st_message({_p}, "%st_objective_detail({_next})%")
+	st_message({_p}, "%st_objective_tip({_next})%")
+
+function st_objective_announce_next(p: player):
+	set {_s} to st_objective_stage({_p})
+	set {_max} to st_objective_max_stage()
+	if {_s} > {_max}:
+		st_message_ok({_p}, "Starter objectives complete. You are ready for Tier 1 machine loops.")
+		stop
+	st_message({_p}, "Next objective %{_s}%/%{_max}%: %st_objective_text({_s})%")
+	st_message({_p}, "%st_objective_detail({_s})%")
+	st_message({_p}, "%st_objective_tip({_s})%")
+
+function st_objective_show(p: player):
+	set {_s} to st_objective_stage({_p})
+	set {_max} to st_objective_max_stage()
+	if {_s} > {_max}:
+		st_message_ok({_p}, "Starter objectives complete. Move into machine automation.")
+		st_message({_p}, "Use &e/st progress&7 or start your first machine loop when ready.")
+		stop
+	set {_text} to st_objective_text({_s})
+	st_message({_p}, "Current objective %{_s}%/%{_max}%: %{_text}%")
+	st_message({_p}, "%st_objective_detail({_s})%")
+	st_message({_p}, "%st_objective_tip({_s})%")
+	if {_s} < {_max}:
+		st_message({_p}, "Use &e/st objective next&7 to preview the following step.")
+		st_message({_p}, "Use &e/st objective walkthrough&7 for the full starter guide.")
+
+function st_onboarding_send_first_use(p: player):
+	set {_u} to uuid of {_p}
+	if {st.player::%{_u}%::onboarded} is true:
+		stop
+	set {st.player::%{_u}%::onboarded} to true
+	if {st.player::%{_u}%::tier} is not set:
+		set {st.player::%{_u}%::tier} to 0
+	if {st.player::%{_u}%::objective::stage} is not set:
+		set {st.player::%{_u}%::objective::stage} to 1
+	if st_player_has_custom_item({_p}, "primitive_hammer", 1) is false:
+		if st_item_give({_p}, "primitive_hammer", 1) is true:
+			st_message_ok({_p}, "Starter kit: you received a &ePrimitive Hammer&7 for the first tutorial steps.")
+	st_message_ok({_p}, "Welcome to Simple Tech.")
+	st_message({_p}, "Start with &e/st help&7, then check your starter objective with &e/st objective&7 whenever you want.")
+	st_message({_p}, "Tip: use &e/st objective walkthrough&7 if you want the full step-by-step primitive tutorial.")
+	st_objective_show({_p})
+
+function st_objective_try_advance(p: player):
+	set {_u} to uuid of {_p}
+	set {_s} to st_objective_stage({_p})
+
+	if {_s} is 1:
+		if st_player_has_raw_iron({_p}, 1) is true:
+			st_objective_set_stage({_p}, 2)
+			st_message_ok({_p}, "Objective complete: collected raw iron.")
+			st_objective_announce_next({_p})
+			stop
+
+	if {_s} is 2:
+		if st_player_holding_custom_item({_p}, "primitive_hammer") is true:
+			st_objective_set_stage({_p}, 3)
+			st_message_ok({_p}, "Objective complete: found and equipped the Primitive Hammer.")
+			st_objective_announce_next({_p})
+			stop
+
+	if {_s} is 3:
+		if st_player_has_custom_item({_p}, "crushed_iron", 1) is true:
+			st_objective_set_stage({_p}, 4)
+			st_message_ok({_p}, "Objective complete: obtained crushed iron.")
+			st_objective_announce_next({_p})
+			stop
+
+	if {_s} is 4:
+		if st_player_has_custom_item({_p}, "iron_plate", 1) is true:
+			st_objective_set_stage({_p}, 5)
+			st_message_ok({_p}, "Objective complete: created an iron plate.")
+			st_objective_announce_next({_p})
+			stop
+
+	if {_s} is 5:
+		if {st.player::%{_u}%::objective::progressViewed} is true:
+			st_objective_set_stage({_p}, 6)
+			set {st.player::%{_u}%::objective::complete} to true
+			st_message_ok({_p}, "Starter objectives complete. You are ready for Tier 1 machine loops.")
+			stop
+
+function st_objective_hint_tick(p: player):
+	set {_u} to uuid of {_p}
+	if {st.player::%{_u}%::objective::complete} is true:
+		stop
+	if st_objective_reminders_enabled() is false:
+		stop
+	if st_cooldown_ready({_p}, "objective_hint", {@st-objective-hint-seconds}) is true:
+		st_objective_show({_p})
+
+on join:
+	wait 20 ticks
+	st_onboarding_send_first_use(player)
+
+every 100 ticks:
+	loop all players:
+		st_objective_try_advance(loop-player)
+		st_objective_hint_tick(loop-player)

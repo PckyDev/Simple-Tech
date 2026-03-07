@@ -1,0 +1,812 @@
+# Simple Tech Module: st_05_machines_advanced
+options:
+	st-module-id: st_05_machines_advanced
+	st-machine-advanced-prefix: st_advanced
+	st-machine-advanced-admin-permission: simpletech.admin
+
+function st_machine_advanced_exists(loc: location) :: boolean:
+	set {_key} to st_machine_advanced_key({_loc})
+	if {st.machine::%{_key}%::type} is set:
+		return true
+	return false
+
+function st_machine_advanced_key(loc: location) :: text:
+	set {_base} to st_location_key({_loc})
+	return "{@st-machine-advanced-prefix}:%{_base}%"
+
+function st_machine_advanced_register(loc: location, machine: text, tier: number):
+	set {_key} to st_machine_advanced_key({_loc})
+	set {st.machine::%{_key}%::type} to lowercase {_machine}
+	set {st.machine::%{_key}%::tier} to {_tier}
+	set {st.machine::%{_key}%::loc} to {_loc}
+	set {st.machine::%{_key}%::blockType} to lowercase "%type of block at {_loc}%"
+	set {st.machine::%{_key}%::queueHead} to 1
+	set {st.machine::%{_key}%::queueTail} to 0
+	set {st.machine::%{_key}%::active} to false
+	set {st.machine::%{_key}%::remaining} to 0
+	set {st.machine::%{_key}%::progress} to 0
+	set {st.machine::%{_key}%::upgrade::speed} to 0
+	set {st.machine::%{_key}%::upgrade::efficiency} to 0
+	set {st.machine::%{_key}%::upgrade::yield} to 0
+	set {st.machine::%{_key}%::upgrade::capacity} to 0
+	delete {st.machine::%{_key}%::buffer}
+	delete {st.machine::%{_key}%::pattern}
+	add 1 to {st.scheduler::advanced::assign}
+	if {st.scheduler::advanced::assign} > 1:
+		set {st.scheduler::advanced::assign} to 0
+	set {st.machine::%{_key}%::bucket} to {st.scheduler::advanced::assign}
+	set {st.machine::%{_key}%::sleeping} to true
+	if {_key} is not in {st.machine.advanced.keys::*}:
+		add {_key} to {st.machine.advanced.keys::*}
+
+function st_machine_advanced_unregister(loc: location):
+	set {_key} to st_machine_advanced_key({_loc})
+	remove {_key} from {st.machine.advanced.keys::*}
+	remove {_key} from {st.machine.advanced.active::*}
+	remove {_key} from {st.persist.advanced.keys::*}
+	delete {st.persist::advanced::%{_key}%::*}
+	delete {st.machine::%{_key}%::*}
+
+function st_machine_advanced_mark_active(key: text):
+	if {_key} is not in {st.machine.advanced.active::*}:
+		add {_key} to {st.machine.advanced.active::*}
+	set {st.machine::%{_key}%::sleeping} to false
+
+function st_machine_advanced_mark_idle(key: text):
+	remove {_key} from {st.machine.advanced.active::*}
+	set {st.machine::%{_key}%::sleeping} to true
+
+function st_machine_advanced_set_mode(loc: location, mode: text):
+	set {_key} to st_machine_advanced_key({_loc})
+	set {st.machine::%{_key}%::mode} to {_mode}
+
+function st_machine_advanced_item_id(it: item) :: text:
+	if {_it} is air:
+		return ""
+	set {_id} to st_item_id({_it})
+	if {_id} is not "":
+		return {_id}
+	set {_typeText} to lowercase "%type of {_it}%"
+	replace " " in {_typeText} with "_"
+	return {_typeText}
+
+function st_machine_advanced_take_one_from_hand(p: player):
+	set {_held} to tool of {_p}
+	if {_held} is air:
+		stop
+	if amount of {_held} > 1:
+		set amount of {_held} to amount of {_held} - 1
+		set tool of {_p} to {_held}
+		stop
+	set tool of {_p} to air
+
+function st_machine_assembler_has_primary(inputId: text) :: boolean:
+	set {_in} to lowercase {_inputId}
+	loop {st.recipe.type::machine_assembler::ids::*}:
+		set {_id} to loop-value
+		if {st.recipe::machine_assembler::%{_id}%::input1} is {_in}:
+			return true
+	return false
+
+function st_machine_refinery_has_primary(inputId: text) :: boolean:
+	set {_in} to lowercase {_inputId}
+	loop {st.recipe.type::machine_refinery::ids::*}:
+		set {_id} to loop-value
+		if {st.recipe::machine_refinery::%{_id}%::input1} is {_in}:
+			return true
+	return false
+
+function st_machine_electrolyzer_has_primary(inputId: text) :: boolean:
+	set {_in} to lowercase {_inputId}
+	loop {st.recipe.type::machine_electrolyzer::ids::*}:
+		set {_id} to loop-value
+		if {st.recipe::machine_electrolyzer::%{_id}%::input1} is {_in}:
+			return true
+	return false
+
+function st_machine_fabricator_has_primary(inputId: text) :: boolean:
+	set {_in} to lowercase {_inputId}
+	loop {st.recipe.type::machine_fabricator::ids::*}:
+		set {_id} to loop-value
+		if {st.recipe::machine_fabricator::%{_id}%::input1} is {_in}:
+			return true
+	return false
+
+function st_machine_advanced_recipe_type(machine: text) :: text:
+	set {_m} to lowercase {_machine}
+	if {_m} is "assembler":
+		return "machine_assembler"
+	if {_m} is "refinery":
+		return "machine_refinery"
+	if {_m} is "electrolyzer":
+		return "machine_electrolyzer"
+	if {_m} is "fabricator":
+		return "machine_fabricator"
+	return ""
+
+function st_machine_advanced_recipe_fuel_cost(recipeType: text, recipeId: text) :: number:
+	set {_cost} to {st.recipe::%{_recipeType}%::%{_recipeId}%::fuelCost}
+	if {_cost} is not set:
+		set {_cost} to 0
+	return {_cost}
+
+function st_machine_advanced_require_recipe_fuel(loc: location, recipeType: text, recipeId: text, p: player) :: boolean:
+	set {_cost} to st_machine_advanced_recipe_fuel_cost({_recipeType}, {_recipeId})
+	if {_cost} <= 0:
+		return true
+	set {_key} to st_machine_advanced_key({_loc})
+	set {_effective} to st_machine_advanced_effective_fuel_cost({_key}, {_recipeType}, {_recipeId})
+	if st_machine_consume_fuel({_loc}, {_effective}) is true:
+		return true
+	st_message_warn({_p}, "Advanced machine needs %{_effective}% fuel points. Sneak-right-click with fuel.")
+	return false
+
+function st_machine_advanced_queue_push(key: text, recipeId: text):
+	set {_tail} to {st.machine::%{_key}%::queueTail}
+	if {_tail} is not set:
+		set {_tail} to 0
+	add 1 to {_tail}
+	set {st.machine::%{_key}%::queueTail} to {_tail}
+	set {st.machine::%{_key}%::queue::%{_tail}%} to {_recipeId}
+
+function st_machine_advanced_queue_has(key: text) :: boolean:
+	set {_head} to {st.machine::%{_key}%::queueHead}
+	set {_tail} to {st.machine::%{_key}%::queueTail}
+	if {_head} is not set:
+		set {_head} to 1
+	if {_tail} is not set:
+		set {_tail} to 0
+	if {_head} <= {_tail}:
+		return true
+	return false
+
+function st_machine_advanced_queue_peek(key: text) :: text:
+	if st_machine_advanced_queue_has({_key}) is false:
+		return ""
+	set {_head} to {st.machine::%{_key}%::queueHead}
+	return {st.machine::%{_key}%::queue::%{_head}%}
+
+function st_machine_advanced_queue_pop(key: text) :: text:
+	set {_next} to st_machine_advanced_queue_peek({_key})
+	if {_next} is "":
+		return ""
+	set {_head} to {st.machine::%{_key}%::queueHead}
+	delete {st.machine::%{_key}%::queue::%{_head}%}
+	add 1 to {_head}
+	set {st.machine::%{_key}%::queueHead} to {_head}
+	return {_next}
+
+function st_machine_advanced_queue_size(key: text) :: number:
+	set {_head} to {st.machine::%{_key}%::queueHead}
+	set {_tail} to {st.machine::%{_key}%::queueTail}
+	if {_head} is not set:
+		set {_head} to 1
+	if {_tail} is not set:
+		set {_tail} to 0
+	if {_tail} < {_head}:
+		return 0
+	return {_tail} - {_head} + 1
+
+function st_machine_advanced_queue_limit(key: text) :: number:
+	set {_cap} to 3
+	if {st.machine::%{_key}%::upgrade::capacity} >= 1:
+		set {_cap} to 6
+	set {_limit} to st_balance_upgrade_cap("assembler.capacity", {_cap})
+	if {_cap} > {_limit}:
+		set {_cap} to {_limit}
+	return {_cap}
+
+function st_machine_advanced_integrity_ok(loc: location) :: boolean:
+	if st_machine_advanced_exists({_loc}) is false:
+		return false
+	set {_key} to st_machine_advanced_key({_loc})
+	set {_stored} to {st.machine::%{_key}%::blockType}
+	if {_stored} is not set:
+		set {st.machine::%{_key}%::blockType} to lowercase "%type of block at {_loc}%"
+		return true
+	set {_current} to lowercase "%type of block at {_loc}%"
+	if {_current} is {_stored}:
+		return true
+	st_machine_advanced_unregister({_loc})
+	return false
+
+function st_machine_advanced_effective_fuel_cost(key: text, recipeType: text, recipeId: text) :: number:
+	set {_cost} to st_machine_advanced_recipe_fuel_cost({_recipeType}, {_recipeId})
+	if {_cost} <= 0:
+		return 0
+	if {st.machine::%{_key}%::upgrade::efficiency} >= 1:
+		set {_cost} to floor({_cost} * 0.7)
+		if {_cost} < 1:
+			set {_cost} to 1
+	return {_cost}
+
+function st_machine_advanced_effective_upkeep(key: text, machine: text) :: number:
+	set {_cost} to st_machine_active_upkeep_cost({_machine})
+	if {_cost} <= 0:
+		return 0
+	if {st.machine::%{_key}%::upgrade::efficiency} >= 1:
+		set {_cost} to floor({_cost} * 0.5)
+		if {_cost} < 1:
+			set {_cost} to 1
+	return {_cost}
+
+function st_machine_advanced_recipe_byproduct_amount(recipeType: text, recipeId: text) :: number:
+	set {_chance} to {st.recipe::%{_recipeType}%::%{_recipeId}%::byproductChance}
+	if {_chance} is not set:
+		set {_chance} to 0
+	if {_chance} <= 0:
+		return 0
+	set {_base} to st_recipe_byproduct_amount({_recipeType}, {_recipeId})
+	if {_base} <= 0:
+		return 0
+	if random integer between 1 and 100 <= {_chance}:
+		return {_base}
+	return 0
+
+function st_machine_advanced_quality_output(machine: text, recipeType: text, recipeId: text, baseOutput: text) :: text:
+	if lowercase {_machine} is not "fabricator":
+		return {_baseOutput}
+	set {_qualityOutput} to st_recipe_quality_output({_recipeType}, {_recipeId})
+	if {_qualityOutput} is "":
+		return {_baseOutput}
+	set {_chance} to st_recipe_quality_chance({_recipeType}, {_recipeId})
+	if {_chance} <= 0:
+		return {_baseOutput}
+	if random integer between 1 and 100 <= {_chance}:
+		return {_qualityOutput}
+	return {_baseOutput}
+
+function st_machine_advanced_start(key: text, recipeType: text, recipeId: text):
+	set {_machine} to {st.machine::%{_key}%::type}
+	if {_machine} is not set:
+		set {_machine} to "assembler"
+	set {_duration} to st_recipe_duration({_recipeType}, {_recipeId})
+	if {_duration} <= 0:
+		set {_duration} to 1
+	set {_loc} to {st.machine::%{_key}%::loc}
+	set {_tier} to st_recipe_unlock_tier({_recipeType}, {_recipeId})
+	set {_duration} to st_balance_apply_duration({_machine}, {_duration}, {_tier})
+	set {_duration} to st_world_duration_adjusted({_loc}, {_machine}, {_duration})
+	if {_machine} is "electrolyzer":
+		set {_heatKey} to st_machine_energy_key({_loc})
+		set {_heat} to st_heat_get({_heatKey})
+		if {_heat} >= 20:
+			remove floor({_heat} / 40) from {_duration}
+			if {_duration} < 1:
+				set {_duration} to 1
+
+	if {st.machine::%{_key}%::upgrade::speed} >= 1:
+		set {_duration} to floor({_duration} * 0.75)
+		if {_duration} <= 0:
+			set {_duration} to 1
+
+	set {_outputId} to st_recipe_output({_recipeType}, {_recipeId})
+	set {_outputId} to st_machine_advanced_quality_output({_machine}, {_recipeType}, {_recipeId}, {_outputId})
+	set {_outputAmount} to {st.recipe::%{_recipeType}%::%{_recipeId}%::outputAmount}
+	if {_outputAmount} is not set:
+		set {_outputAmount} to 1
+	set {_byproductId} to st_recipe_byproduct_id({_recipeType}, {_recipeId})
+	set {_byproductAmount} to st_machine_advanced_recipe_byproduct_amount({_recipeType}, {_recipeId})
+	if {_machine} is "electrolyzer":
+		set {_heatKey} to st_machine_energy_key({_loc})
+		set {_heat} to st_heat_get({_heatKey})
+		if {st.machine::%{_key}%::upgrade::efficiency} >= 1:
+			if {_heat} >= 20:
+				add 1 to {_byproductAmount}
+	if {st.machine::%{_key}%::upgrade::yield} >= 1:
+		if random integer between 1 and 100 <= 20:
+			add 1 to {_outputAmount}
+	set {_qualityTier} to "standard"
+	if {_outputId} is st_recipe_quality_output({_recipeType}, {_recipeId}):
+		if {_outputId} is not "":
+			set {_qualityTier} to "pristine"
+
+	set {st.machine::%{_key}%::active} to true
+	set {st.machine::%{_key}%::remaining} to {_duration}
+	set {st.machine::%{_key}%::progress} to 0
+	set {st.machine::%{_key}%::recipeType} to {_recipeType}
+	set {st.machine::%{_key}%::recipe} to {_recipeId}
+	set {st.machine::%{_key}%::outputId} to {_outputId}
+	set {st.machine::%{_key}%::outputAmount} to {_outputAmount}
+	set {st.machine::%{_key}%::byproductId} to {_byproductId}
+	set {st.machine::%{_key}%::byproductAmount} to {_byproductAmount}
+	set {st.machine::%{_key}%::qualityTier} to {_qualityTier}
+	set {st.machine::%{_key}%::pattern} to {_recipeId}
+	st_machine_advanced_mark_active({_key})
+	st_machine_feedback_actionbar({_loc}, "&b%{_machine}%&7 started")
+	st_machine_feedback_sound({_loc}, "block.piston.extend", 0.7, 1.2)
+
+every 10 ticks:
+	add 1 to {st.scheduler::advanced::bucket}
+	if {st.scheduler::advanced::bucket} > 1:
+		set {st.scheduler::advanced::bucket} to 0
+	loop {st.machine.advanced.active::*}:
+		set {_key} to loop-value
+		if {st.machine::%{_key}%::type} is not set:
+			remove {_key} from {st.machine.advanced.active::*}
+		else if {st.machine::%{_key}%::bucket} is {st.scheduler::advanced::bucket}:
+			set {_machine} to {st.machine::%{_key}%::type}
+			if {_machine} is "assembler":
+				set {_supportsQueue} to true
+			else if {_machine} is "refinery":
+				set {_supportsQueue} to false
+			else if {_machine} is "electrolyzer":
+				set {_supportsQueue} to false
+			else if {_machine} is "fabricator":
+				set {_supportsQueue} to false
+			else:
+				set {_supportsQueue} to false
+			if {_machine} is "assembler":
+				set {_processable} to true
+			else if {_machine} is "refinery":
+				set {_processable} to true
+			else if {_machine} is "electrolyzer":
+				set {_processable} to true
+			else if {_machine} is "fabricator":
+				set {_processable} to true
+			else:
+				set {_processable} to false
+			if {_processable} is true:
+				set {_loc} to {st.machine::%{_key}%::loc}
+				if st_world_chunk_loaded({_loc}) is false:
+					set {st.machine::%{_key}%::pausedChunk} to true
+					st_machine_feedback_actionbar({_loc}, "&e%{_machine}% paused&7: chunk unloaded")
+				else:
+					set {st.machine::%{_key}%::pausedChunk} to false
+
+				if {st.machine::%{_key}%::active} is true:
+					if {st.machine::%{_key}%::pausedChunk} is false:
+						set {_upkeep} to st_machine_advanced_effective_upkeep({_key}, {_machine})
+						if st_machine_consume_fuel({_loc}, {_upkeep}) is false:
+							set {st.machine::%{_key}%::pausedFuel} to true
+							st_machine_feedback_actionbar({_loc}, "&e%{_machine}% paused&7: out of fuel")
+						else:
+							set {st.machine::%{_key}%::pausedFuel} to false
+							set {_rem} to {st.machine::%{_key}%::remaining}
+							if {_rem} is not set:
+								set {_rem} to 0
+							if {_rem} > 0:
+								remove 1 from {_rem}
+								set {st.machine::%{_key}%::remaining} to {_rem}
+								add 1 to {st.machine::%{_key}%::progress}
+								st_machine_feedback_actionbar({_loc}, "&b%{_machine}%&7 working: &f%{_rem}%&7s left")
+
+							if {st.machine::%{_key}%::remaining} <= 0:
+								set {_loc} to {st.machine::%{_key}%::loc}
+								set {_outId} to {st.machine::%{_key}%::outputId}
+								set {_outAmount} to {st.machine::%{_key}%::outputAmount}
+								set {_out} to st_item_build({_outId}, {_outAmount})
+								if {_out} is not air:
+									if st_logistics_dispatch({_loc}, {_out}) is false:
+										drop {_out} at {_loc}
+								else:
+									st_error_log("Advanced machine output build failed at %{_key}% for id %{_outId}%")
+
+								set {_byproductId} to {st.machine::%{_key}%::byproductId}
+								set {_byproductAmount} to {st.machine::%{_key}%::byproductAmount}
+								if {_byproductAmount} > 0:
+									set {_byproduct} to st_item_build({_byproductId}, {_byproductAmount})
+									if {_byproduct} is not air:
+										if st_logistics_dispatch({_loc}, {_byproduct}) is false:
+											drop {_byproduct} at {_loc}
+
+								set {st.machine::%{_key}%::active} to false
+								set {st.machine::%{_key}%::remaining} to 0
+								set {st.machine::%{_key}%::progress} to 0
+								set {st.machine::%{_key}%::pausedFuel} to false
+								delete {st.machine::%{_key}%::byproductId}
+								delete {st.machine::%{_key}%::byproductAmount}
+								delete {st.machine::%{_key}%::qualityTier}
+								st_machine_feedback_actionbar({_loc}, "&a%{_machine}% complete&7: %{_outId}% x%{_outAmount}%")
+								st_machine_feedback_sound({_loc}, "entity.experience_orb.pickup", 0.8, 1.2)
+
+				if {st.machine::%{_key}%::active} is false:
+					if {_supportsQueue} is true:
+						if st_machine_advanced_queue_has({_key}) is true:
+							set {_next} to st_machine_advanced_queue_peek({_key})
+							if {_next} is not "":
+								set {_rtype} to "machine_assembler"
+								set {_loc} to {st.machine::%{_key}%::loc}
+								set {_cost} to st_machine_advanced_effective_fuel_cost({_key}, {_rtype}, {_next})
+								if st_machine_consume_fuel({_loc}, {_cost}) is true:
+									set {_consumed} to st_machine_advanced_queue_pop({_key})
+									if {_consumed} is not "":
+										st_machine_advanced_start({_key}, {_rtype}, {_consumed})
+					else:
+						st_machine_advanced_mark_idle({_key})
+
+on right click:
+	if clicked block is not set:
+		stop
+
+	set {_loc} to clicked block
+	if st_machine_advanced_exists({_loc}) is false:
+		stop
+	if st_machine_advanced_integrity_ok({_loc}) is false:
+		cancel event
+		st_message_warn(player, "Advanced machine metadata was stale and has been cleaned up.")
+		stop
+
+	if st_access_require_use(player, {_loc}) is false:
+		cancel event
+		stop
+	set {_lockKey} to "advanced:%st_machine_advanced_key({_loc})%"
+	if st_lock_try({_lockKey}, 1) is false:
+		cancel event
+		st_message_warn(player, "Machine is busy. Try again in a moment.")
+		stop
+
+	cancel event
+	set {_key} to st_machine_advanced_key({_loc})
+	set {_machine} to {st.machine::%{_key}%::type}
+	if {_machine} is not "assembler":
+		if {_machine} is not "refinery":
+			if {_machine} is not "electrolyzer":
+				if {_machine} is not "fabricator":
+					st_message_warn(player, "Unknown advanced machine type.")
+					stop
+
+	set {_held} to tool of player
+
+	if player is sneaking:
+		if st_machine_try_add_fuel_from_hand(player, {_loc}) is true:
+			set {_fuel} to st_machine_fuel_points({_loc})
+			st_message_ok(player, "Fuel added. Advanced machine fuel: %{_fuel}%")
+			if {st.machine::%{_key}%::pausedFuel} is true:
+				st_message(player, "%{_machine}% was fuel-paused and will resume on next cycle.")
+			stop
+
+		set {_hid} to st_machine_advanced_item_id({_held})
+		if {_hid} is "tech_wrench":
+			if st_machine_auto_refuel_enabled({_loc}) is true:
+				st_machine_auto_refuel_set_enabled({_loc}, false)
+				st_message_ok(player, "Advanced machine auto-refuel disabled.")
+				stop
+			st_machine_auto_refuel_set_enabled({_loc}, true)
+			st_message_ok(player, "Advanced machine auto-refuel enabled. Add one fuel item manually to set the preferred fuel, then link a buffer route supplying that fuel.")
+			stop
+		if {_hid} is "speed_upgrade_1":
+			if {st.machine::%{_key}%::upgrade::speed} >= 1:
+				st_message_warn(player, "Speed Upgrade slot is full.")
+				stop
+			set {_tier} to {st.player::%uuid of player%::tier}
+			if {_tier} is not set:
+				set {_tier} to 0
+			if {_tier} < 2:
+				st_message_warn(player, "You need tier 2 to apply this upgrade.")
+				stop
+			st_machine_advanced_take_one_from_hand(player)
+			set {st.machine::%{_key}%::upgrade::speed} to 1
+			st_message_ok(player, "Speed Upgrade I applied.")
+			stop
+
+		if {_hid} is "efficiency_upgrade_1":
+			if {st.machine::%{_key}%::upgrade::efficiency} >= 1:
+				st_message_warn(player, "Efficiency Upgrade slot is full.")
+				stop
+			set {_tier} to {st.player::%uuid of player%::tier}
+			if {_tier} is not set:
+				set {_tier} to 0
+			if {_tier} < 2:
+				st_message_warn(player, "You need tier 2 to apply this upgrade.")
+				stop
+			st_machine_advanced_take_one_from_hand(player)
+			set {st.machine::%{_key}%::upgrade::efficiency} to 1
+			st_message_ok(player, "Efficiency Upgrade I applied.")
+			stop
+
+		if {_hid} is "yield_upgrade_1":
+			if {st.machine::%{_key}%::upgrade::yield} >= 1:
+				st_message_warn(player, "Yield Upgrade slot is full.")
+				stop
+			if {st.machine::%{_key}%::upgrade::speed} >= 1:
+				st_message_warn(player, "Yield Upgrade I is incompatible with Speed Upgrade I.")
+				stop
+			set {_tier} to {st.player::%uuid of player%::tier}
+			if {_tier} is not set:
+				set {_tier} to 0
+			if {_tier} < 3:
+				st_message_warn(player, "You need tier 3 to apply this upgrade.")
+				stop
+			st_machine_advanced_take_one_from_hand(player)
+			set {st.machine::%{_key}%::upgrade::yield} to 1
+			st_message_ok(player, "Yield Upgrade I applied.")
+			stop
+
+		if {_hid} is "capacity_upgrade_1":
+			if {st.machine::%{_key}%::upgrade::capacity} >= 1:
+				st_message_warn(player, "Capacity Upgrade slot is full.")
+				stop
+			set {_tier} to {st.player::%uuid of player%::tier}
+			if {_tier} is not set:
+				set {_tier} to 0
+			if {_tier} < 2:
+				st_message_warn(player, "You need tier 2 to apply this upgrade.")
+				stop
+			st_machine_advanced_take_one_from_hand(player)
+			set {st.machine::%{_key}%::upgrade::capacity} to 1
+			st_message_ok(player, "Capacity Upgrade I applied.")
+			stop
+
+		st_message_warn(player, "Sneak-right-click with fuel or an upgrade item.")
+		stop
+
+	if {_machine} is "refinery":
+		if {_held} is air:
+			st_message_warn(player, "Hold refinery input item in your hand.")
+			stop
+		set {_inId} to st_machine_advanced_item_id({_held})
+		if {_inId} is "":
+			st_message_warn(player, "Could not read held item ID.")
+			stop
+		if st_machine_refinery_has_primary({_inId}) is false:
+			st_message_warn(player, "That item cannot be refined here.")
+			stop
+		if {st.machine::%{_key}%::active} is true:
+			st_message_warn(player, "Refinery is already processing.")
+			stop
+		set {_rid} to st_recipe_match_machine("machine_refinery", {_inId}, "")
+		if {_rid} is "":
+			st_message_warn(player, "No refinery recipe for %{_inId}%")
+			stop
+		if st_econ_require_machine_start(player, "refinery", "machine_refinery", {_rid}) is false:
+			stop
+		if st_machine_advanced_require_recipe_fuel({_loc}, "machine_refinery", {_rid}, player) is false:
+			stop
+		st_machine_advanced_take_one_from_hand(player)
+		st_machine_advanced_start({_key}, "machine_refinery", {_rid})
+		st_message_ok(player, "Refinery started: %{_rid}%")
+		stop
+
+	if {_machine} is "electrolyzer":
+		if {_held} is air:
+			st_message_warn(player, "Hold electrolyzer input item in your hand.")
+			stop
+		set {_inId} to st_machine_advanced_item_id({_held})
+		if {_inId} is "":
+			st_message_warn(player, "Could not read held item ID.")
+			stop
+		if st_machine_electrolyzer_has_primary({_inId}) is false:
+			st_message_warn(player, "That item cannot be processed by the electrolyzer.")
+			stop
+		if {st.machine::%{_key}%::active} is true:
+			st_message_warn(player, "Electrolyzer is already processing.")
+			stop
+		set {_rid} to st_recipe_match_machine("machine_electrolyzer", {_inId}, "")
+		if {_rid} is "":
+			st_message_warn(player, "No electrolyzer recipe for %{_inId}%")
+			stop
+		if st_econ_require_machine_start(player, "electrolyzer", "machine_electrolyzer", {_rid}) is false:
+			stop
+		if st_machine_advanced_require_recipe_fuel({_loc}, "machine_electrolyzer", {_rid}, player) is false:
+			stop
+		st_machine_advanced_take_one_from_hand(player)
+		st_machine_advanced_start({_key}, "machine_electrolyzer", {_rid})
+		st_message_ok(player, "Electrolyzer started: %{_rid}%")
+		stop
+
+	if {_held} is air:
+		if {_machine} is "fabricator":
+			st_message_warn(player, "Hold fabricator input item in your hand.")
+			stop
+		st_message_warn(player, "Hold assembler input item in your hand.")
+		stop
+
+	set {_inId} to st_machine_advanced_item_id({_held})
+	if {_inId} is "":
+		st_message_warn(player, "Could not read held item ID.")
+		stop
+
+	set {_buffer} to {st.machine::%{_key}%::buffer}
+	if {_buffer} is not set:
+		if {_machine} is "fabricator":
+			if st_machine_fabricator_has_primary({_inId}) is false:
+				st_message_warn(player, "That item cannot be the first fabricator input.")
+				stop
+		else:
+			if st_machine_assembler_has_primary({_inId}) is false:
+				st_message_warn(player, "That item cannot be the first assembler input.")
+				stop
+		st_machine_advanced_take_one_from_hand(player)
+		set {st.machine::%{_key}%::buffer} to {_inId}
+		if {_machine} is "fabricator":
+			st_message(player, "Fabricator input 1 set to %{_inId}%. Add second input.")
+		else:
+			st_message(player, "Assembler input 1 set to %{_inId}%. Add second input.")
+		stop
+
+	set {_recipeType} to st_machine_advanced_recipe_type({_machine})
+	set {_rid} to st_recipe_match_machine({_recipeType}, {_buffer}, {_inId})
+	if {_rid} is "":
+		if {_machine} is "fabricator":
+			st_message_warn(player, "No fabricator recipe for %{_buffer}% + %{_inId}%")
+		else:
+			st_message_warn(player, "No assembler recipe for %{_buffer}% + %{_inId}%")
+		stop
+
+	if st_econ_require_machine_start(player, {_machine}, {_recipeType}, {_rid}) is false:
+		stop
+	if st_machine_advanced_require_recipe_fuel({_loc}, {_recipeType}, {_rid}, player) is false:
+		stop
+
+	st_machine_advanced_take_one_from_hand(player)
+	delete {st.machine::%{_key}%::buffer}
+
+	if {_machine} is "assembler":
+		if {st.machine::%{_key}%::active} is true:
+			set {_q} to st_machine_advanced_queue_size({_key})
+			set {_cap} to st_machine_advanced_queue_limit({_key})
+			if {_q} >= {_cap}:
+				st_message_warn(player, "Assembler queue is full (%{_q}%/%{_cap}%).")
+				stop
+			st_machine_advanced_queue_push({_key}, {_rid})
+			set {_q} to st_machine_advanced_queue_size({_key})
+			st_message_ok(player, "Assembler busy. Queued %{_rid}% (queue: %{_q}%).")
+			stop
+
+	if {_machine} is "fabricator":
+		if {st.machine::%{_key}%::active} is true:
+			st_message_warn(player, "Fabricator is already processing.")
+			stop
+
+	st_machine_advanced_start({_key}, {_recipeType}, {_rid})
+	if {_machine} is "fabricator":
+		st_message_ok(player, "Fabricator started: %{_rid}%")
+	else:
+		st_message_ok(player, "Assembler started: %{_rid}%")
+
+on break:
+	if event-block is set:
+		if st_machine_advanced_exists(event-block) is true:
+			if player is set:
+				if st_access_require_break(player, event-block) is false:
+					cancel event
+					stop
+				if {st.machine::%st_machine_advanced_key(event-block)%::active} is true:
+					if st_has_permission(player, "simpletech.admin") is false:
+						cancel event
+						st_message_warn(player, "Active machines cannot be broken without admin override.")
+						stop
+					if st_access_has_break_override(player, event-block) is false:
+						cancel event
+						st_message_warn(player, "Use /staccess overridebreak while targeting this block, then break it again.")
+						stop
+			st_audit_log("%player% broke advanced machine at %event-block%")
+			st_machine_advanced_unregister(event-block)
+			if player is set:
+				st_message_warn(player, "Simple Tech advanced machine removed.")
+
+command /stadvanced [<text>] [<text>]:
+	trigger:
+		if arg-1 is not set:
+			st_message(player, "Usage: /stadvanced <set|remove|info|list|autofuel> [assembler|refinery|electrolyzer|fabricator]")
+			stop
+
+		if arg-1 is "list":
+			st_message(player, "Registered advanced machines:")
+			loop {st.machine.advanced.keys::*}:
+				set {_type} to {st.machine::%loop-value%::type}
+				send "&8- &b%loop-value% &7(%{_type}%)" to player
+			stop
+
+		if arg-1 is "info":
+			if target block is not set:
+				st_message_warn(player, "Look at a block first.")
+				stop
+			if st_machine_advanced_exists(target block) is false:
+				st_message_warn(player, "Target block is not a Simple Tech advanced machine.")
+				stop
+			set {_key} to st_machine_advanced_key(target block)
+			set {_machine} to {st.machine::%{_key}%::type}
+			set {_q} to st_machine_advanced_queue_size({_key})
+			set {_cap} to st_machine_advanced_queue_limit({_key})
+			if {_machine} is not "assembler":
+				set {_q} to 0
+				set {_cap} to 0
+			set {_fuelKey} to st_location_key(target block)
+			set {_fuelBuffer} to {st.power::%{_fuelKey}%}
+			if {_fuelBuffer} is not set:
+				set {_fuelBuffer} to 0
+			set {_sampleType} to "machine_assembler"
+			set {_sampleRecipe} to "wrench_assembly"
+			if {_machine} is "refinery":
+				set {_sampleType} to "machine_refinery"
+				set {_sampleRecipe} to "slurry_separation"
+			else if {_machine} is "electrolyzer":
+				set {_sampleType} to "machine_electrolyzer"
+				set {_sampleRecipe} to "coil_energizing"
+			else if {_machine} is "fabricator":
+				set {_sampleType} to "machine_fabricator"
+				set {_sampleRecipe} to "matrix_fabrication"
+			set {_sampleFuel} to st_machine_advanced_effective_fuel_cost({_key}, {_sampleType}, {_sampleRecipe})
+			set {_upkeep} to st_machine_advanced_effective_upkeep({_key}, {_machine})
+			set {_autoFuel} to st_machine_auto_refuel_enabled(target block)
+			set {_autoFuelId} to st_machine_auto_refuel_fuel_id(target block)
+			set {_qualityTier} to {st.machine::%{_key}%::qualityTier}
+			if {_qualityTier} is not set:
+				set {_qualityTier} to "standard"
+			send "&7Machine: &b%{_machine}%" to player
+			send "&7Tier: &e%{st.machine::%{_key}%::tier}%" to player
+			send "&7Active: &e%{st.machine::%{_key}%::active}%" to player
+			send "&7Remaining: &e%{st.machine::%{_key}%::remaining}%" to player
+			send "&7Pattern: &e%{st.machine::%{_key}%::pattern}%" to player
+			send "&7Byproduct: &e%{st.machine::%{_key}%::byproductId}% x%{st.machine::%{_key}%::byproductAmount}%" to player
+			send "&7Quality Tier: &e%{_qualityTier}%" to player
+			send "&7Auto Refuel: &e%{_autoFuel}% (%{_autoFuelId}%)" to player
+			send "&7Queue Size: &e%{_q}%/%{_cap}%" to player
+			send "&7Speed Upgrade: &e%{st.machine::%{_key}%::upgrade::speed}%/1" to player
+			send "&7Efficiency Upgrade: &e%{st.machine::%{_key}%::upgrade::efficiency}%/1" to player
+			send "&7Yield Upgrade: &e%{st.machine::%{_key}%::upgrade::yield}%/1" to player
+			send "&7Capacity Upgrade: &e%{st.machine::%{_key}%::upgrade::capacity}%/1" to player
+			send "&7Effective upkeep/tick: &e%{_upkeep}%" to player
+			send "&7Sample fuel cost (wrench_assembly): &e%{_sampleFuel}%" to player
+			send "&7Fuel Buffer: &e%{_fuelBuffer}%" to player
+			stop
+
+		if arg-1 is "set":
+			if st_require_permission(player, "{@st-machine-advanced-admin-permission}") is false:
+				stop
+			if arg-2 is not set:
+				st_message_warn(player, "Usage: /stadvanced set <assembler|refinery|electrolyzer|fabricator>")
+				stop
+			if target block is not set:
+				st_message_warn(player, "Look at a block first.")
+				stop
+
+			set {_m} to lowercase arg-2
+			if {_m} is not "assembler":
+				if {_m} is not "refinery":
+					if {_m} is not "electrolyzer":
+						if {_m} is not "fabricator":
+							st_message_warn(player, "Unknown advanced machine type.")
+							stop
+
+			st_machine_advanced_register(target block, {_m}, 2)
+			st_access_set_owner(target block, player)
+			st_message_ok(player, "Registered advanced %{_m}% at target block.")
+			st_audit_log("%player% registered advanced machine %{_m}% at %target block%")
+			stop
+
+		if arg-1 is "remove":
+			if st_require_permission(player, "{@st-machine-advanced-admin-permission}") is false:
+				stop
+			if target block is not set:
+				st_message_warn(player, "Look at a block first.")
+				stop
+			if st_machine_advanced_exists(target block) is false:
+				st_message_warn(player, "Target block is not a Simple Tech advanced machine.")
+				stop
+			set {_confirmKey} to "advanced-remove:%st_machine_advanced_key(target block)%"
+			if st_confirm_action(player, {_confirmKey}, "remove advanced machine at target block") is false:
+				stop
+			st_machine_advanced_unregister(target block)
+			st_message_ok(player, "Advanced machine removed.")
+			st_audit_log("%player% removed advanced machine at %target block%")
+			stop
+
+		if arg-1 is "autofuel":
+			if target block is not set:
+				st_message_warn(player, "Look at a block first.")
+				stop
+			if st_machine_advanced_exists(target block) is false:
+				st_message_warn(player, "Target block is not a Simple Tech advanced machine.")
+				stop
+			if arg-2 is not set:
+				st_message(player, "Usage: /stadvanced autofuel <on|off|status>")
+				stop
+			if arg-2 is "on":
+				st_machine_auto_refuel_set_enabled(target block, true)
+				st_message_ok(player, "Advanced machine auto-refuel enabled.")
+				stop
+			if arg-2 is "off":
+				st_machine_auto_refuel_set_enabled(target block, false)
+				st_message_ok(player, "Advanced machine auto-refuel disabled.")
+				stop
+			if arg-2 is "status":
+				st_message(player, "Auto-refuel: %st_machine_auto_refuel_enabled(target block)%")
+				st_message(player, "Preferred fuel: %st_machine_auto_refuel_fuel_id(target block)%")
+				stop
+			st_message_warn(player, "Usage: /stadvanced autofuel <on|off|status>")
+			stop
+
+		st_message_warn(player, "Unknown action. Use /stadvanced <set|remove|info|list|autofuel>")

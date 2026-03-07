@@ -1,0 +1,163 @@
+# Simple Tech Module: st_08_world_interactions
+options:
+	st-module-id: st_08_world_interactions
+	st-rain-penalty-seconds: 2
+	st-heat-bonus-per-level: 2
+	st-cooling-bonus-seconds: 1
+	st-water-wash-bonus: 1
+	st-hot-biome-bonus-seconds: 1
+	st-cold-biome-penalty-seconds: 1
+	st-high-altitude-penalty-seconds: 1
+	st-deep-underground-bonus-seconds: 1
+	st-high-altitude-threshold: 120
+	st-depth-threshold: 40
+
+function st_world_is_raining(loc: location) :: boolean:
+	set {_w} to world of {_loc}
+	if {_w} is raining:
+		return true
+	return false
+
+function st_world_chunk_loaded(loc: location) :: boolean:
+	if chunk at {_loc} is loaded:
+		return true
+	return false
+
+function st_world_block_type(loc: location) :: text:
+	set {_t} to lowercase "%type of block at {_loc}%"
+	return {_t}
+
+function st_world_heat_bonus(loc: location) :: number:
+	set {_block} to block below {_loc}
+	set {_type} to "%type of {_block}%"
+	if {_type} contains "lava":
+		return 2
+	if {_type} contains "campfire":
+		return 1
+	if {_type} contains "fire":
+		return 1
+	return 0
+
+function st_world_water_bonus(loc: location) :: number:
+	set {_count} to 0
+	set {_n} to block north of {_loc}
+	set {_s} to block south of {_loc}
+	set {_e} to block east of {_loc}
+	set {_w} to block west of {_loc}
+
+	set {_tn} to lowercase "%type of {_n}%"
+	set {_ts} to lowercase "%type of {_s}%"
+	set {_te} to lowercase "%type of {_e}%"
+	set {_tw} to lowercase "%type of {_w}%"
+
+	if {_tn} contains "water":
+		add 1 to {_count}
+	if {_ts} contains "water":
+		add 1 to {_count}
+	if {_te} contains "water":
+		add 1 to {_count}
+	if {_tw} contains "water":
+		add 1 to {_count}
+
+	return {_count}
+
+function st_world_cooling_bonus(loc: location) :: number:
+	set {_bonus} to st_world_water_bonus({_loc})
+	set {_aboveType} to st_world_block_type(block above {_loc})
+	if {_aboveType} contains "snow":
+		add 1 to {_bonus}
+	return {_bonus}
+
+function st_world_biome_name(loc: location) :: text:
+	return lowercase "%biome at {_loc}%"
+
+function st_world_biome_is_hot(loc: location) :: boolean:
+	set {_biome} to st_world_biome_name({_loc})
+	if {_biome} contains "desert":
+		return true
+	if {_biome} contains "badlands":
+		return true
+	if {_biome} contains "savanna":
+		return true
+	return false
+
+function st_world_biome_is_cold(loc: location) :: boolean:
+	set {_biome} to st_world_biome_name({_loc})
+	if {_biome} contains "snow":
+		return true
+	if {_biome} contains "frozen":
+		return true
+	if {_biome} contains "ice":
+		return true
+	if {_biome} contains "peak":
+		return true
+	return false
+
+function st_world_height_modifier(loc: location, machine: text) :: number:
+	set {_y} to y-coordinate of {_loc}
+	set {_m} to lowercase {_machine}
+	set {_delta} to 0
+	if {_y} >= {@st-high-altitude-threshold}:
+		if {_m} is "assembler":
+			add {@st-high-altitude-penalty-seconds} to {_delta}
+		if {_m} is "press":
+			add {@st-high-altitude-penalty-seconds} to {_delta}
+	if {_y} <= {@st-depth-threshold}:
+		if {_m} is "crusher":
+			remove {@st-deep-underground-bonus-seconds} from {_delta}
+		if {_m} is "smelter":
+			remove {@st-deep-underground-bonus-seconds} from {_delta}
+	return {_delta}
+
+function st_world_biome_modifier(loc: location, machine: text) :: number:
+	set {_m} to lowercase {_machine}
+	set {_delta} to 0
+	if st_world_biome_is_hot({_loc}) is true:
+		if {_m} is "smelter":
+			remove {@st-hot-biome-bonus-seconds} from {_delta}
+		if {_m} is "press":
+			remove {@st-hot-biome-bonus-seconds} from {_delta}
+	if st_world_biome_is_cold({_loc}) is true:
+		if {_m} is "smelter":
+			add {@st-cold-biome-penalty-seconds} to {_delta}
+		if {_m} is "assembler":
+			add {@st-cold-biome-penalty-seconds} to {_delta}
+	return {_delta}
+
+function st_world_duration_adjusted(loc: location, machine: text, baseDuration: number) :: number:
+	set {_d} to {_baseDuration}
+	set {_m} to lowercase {_machine}
+
+	if st_world_is_raining({_loc}) is true:
+		if {_m} is "press":
+			add {@st-rain-penalty-seconds} to {_d}
+		if {_m} is "assembler":
+			add {@st-rain-penalty-seconds} to {_d}
+
+	set {_heat} to st_world_heat_bonus({_loc})
+	if {_heat} > 0:
+		remove {_heat} * {@st-heat-bonus-per-level} from {_d}
+
+	set {_cool} to st_world_cooling_bonus({_loc})
+	if {_cool} > 0:
+		remove {_cool} * {@st-cooling-bonus-seconds} from {_d}
+
+	add st_world_biome_modifier({_loc}, {_m}) to {_d}
+	add st_world_height_modifier({_loc}, {_m}) to {_d}
+
+	if {_d} < 1:
+		set {_d} to 1
+	return {_d}
+
+function st_world_output_amount_adjusted(loc: location, machine: text, recipeId: text, baseAmount: number) :: number:
+	set {_amount} to {_baseAmount}
+	set {_m} to lowercase {_machine}
+
+	if {_m} is "crusher":
+		if st_world_water_bonus({_loc}) > 0:
+			if {_recipeId} contains "raw":
+				add {@st-water-wash-bonus} to {_amount}
+
+	if {_amount} < 1:
+		set {_amount} to 1
+	return {_amount}
