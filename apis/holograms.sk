@@ -1,0 +1,186 @@
+function stHologramAnchorLocation(b: block, yOffset: number) :: location:
+	set {_loc} to location of {_b}
+	add {_yOffset} to y-coordinate of {_loc}
+	return {_loc}
+
+function stHologramLineCount(text: text) :: number:
+	if {_text} is not set:
+		return 0
+	set {_count} to 1
+	set {_remaining} to {_text}
+	while {_remaining} contains nl:
+		add 1 to {_count}
+		replace first nl with "" in {_remaining}
+	return {_count}
+
+function stSubtitleYOffset(text: text) :: number:
+	set {_lines} to stHologramLineCount({_text})
+	set {_offset} to 1
+	if {_lines} > 1:
+		subtract ({_lines} - 1) * 0.16 from {_offset}
+	return {_offset}
+
+function stSpawnTextHologram(loc: location, text: text, viewer: player, scale: number) :: entity:
+	spawn a text display at {_loc}
+	set {_display} to last spawned entity
+	set text of {_display} to {_text}
+	set billboard of {_display} to center
+	set text alignment of {_display} to center aligned
+	set line width of {_display} to 240
+	set text opacity of {_display} to 255
+	set interpolation delay of {_display} to 0 ticks
+	set interpolation duration of {_display} to 2 ticks
+	set transformation scale of {_display} to vector from {_scale}, {_scale}, {_scale}
+	set shadow strength of {_display} to 0.6
+	set shadow radius of {_display} to 0.1
+	if {_viewer} is set:
+		hide {_display} from all players
+		reveal {_display} to {_viewer}
+	return {_display}
+
+function stDestroyHologram(e: entity):
+	if {_e} is not set:
+		stop
+		
+	set {_id} to "%uuid of {_e}%"
+	delete {st.hologram.float.entity::%{_id}%}
+	delete {st.hologram.float.life::%{_id}%}
+	delete {st.hologram.float.maxlife::%{_id}%}
+	delete {st.hologram.float.rise::%{_id}%}
+	kill {_e}
+
+function stClearPlayerLookHologram(p: player):
+	set {_key} to "%uuid of {_p}%"
+	set {_title} to {st.hologram.look.title::%{_key}%}
+	set {_subtitle} to {st.hologram.look.subtitle::%{_key}%}
+	if {_title} is set:
+		stDestroyHologram({_title})
+	if {_subtitle} is set:
+		stDestroyHologram({_subtitle})
+	delete {st.hologram.look.title::%{_key}%}
+	delete {st.hologram.look.subtitle::%{_key}%}
+	delete {st.hologram.look.block::%{_key}%}
+
+function stShowPlayerLookHologram(p: player, b: block, title: text, subtitle: text):
+	set {_key} to "%uuid of {_p}%"
+	set {_titleLoc} to stHologramAnchorLocation({_b}, 1.16)
+	set {_subtitleLoc} to stHologramAnchorLocation({_b}, stSubtitleYOffset({_subtitle}))
+	set {_titleDisplay} to {st.hologram.look.title::%{_key}%}
+	set {_subtitleDisplay} to {st.hologram.look.subtitle::%{_key}%}
+	if {_titleDisplay} is not set:
+		set {_titleDisplay} to stSpawnTextHologram({_titleLoc}, {_title}, {_p}, 0.9)
+		set {st.hologram.look.title::%{_key}%} to {_titleDisplay}
+	else:
+		teleport {_titleDisplay} to {_titleLoc}
+		set text of {_titleDisplay} to {_title}
+	if {_subtitle} is set:
+		if {_subtitleDisplay} is not set:
+			set {_subtitleDisplay} to stSpawnTextHologram({_subtitleLoc}, {_subtitle}, {_p}, 0.65)
+			set {st.hologram.look.subtitle::%{_key}%} to {_subtitleDisplay}
+		else:
+			teleport {_subtitleDisplay} to {_subtitleLoc}
+			set text of {_subtitleDisplay} to {_subtitle}
+	else:
+		if {_subtitleDisplay} is set:
+			stDestroyHologram({_subtitleDisplay})
+			delete {st.hologram.look.subtitle::%{_key}%}
+	set {st.hologram.look.block::%{_key}%} to stPressId({_b})
+
+function stSpawnFloatingHologram(loc: location, text: text, viewer: player, life: number, rise: number):
+	set {_display} to stSpawnTextHologram({_loc}, {_text}, {_viewer}, 0.8)
+	set {_id} to "%uuid of {_display}%"
+	set {st.hologram.float.entity::%{_id}%} to {_display}
+	set {st.hologram.float.life::%{_id}%} to {_life}
+	set {st.hologram.float.maxlife::%{_id}%} to {_life}
+	set {st.hologram.float.rise::%{_id}%} to {_rise}
+
+function stShowMachineDeltaHologram(b: block, text: text, viewer: player):
+	set {_loc} to stHologramAnchorLocation({_b}, 1.32)
+	stSpawnFloatingHologram({_loc}, {_text}, {_viewer}, 16, 0.03)
+
+function stMachineInfoBlock(b: block) :: block:
+	if stIsPlacedPress({_b}) is true:
+		return {_b}
+	if {_b} is lever:
+		set {_press} to stPressFromCrankBlock({_b})
+		if stIsPlacedPress({_press}) is true:
+			return {_press}
+
+function stPressHasProcessableInput(b: block) :: boolean:
+	set {_front} to stPressFrontBlock({_b})
+	loop dropped items in radius 1 around location of {_front}:
+		if stPressingResult(item of loop-entity) is set:
+			return true
+	return false
+
+function stPressStatusText(b: block) :: text:
+	set {_id} to stPressId({_b})
+	set {_required} to stPressRequiredPower({_b})
+	set {_stored} to {st.press.power::%{_id}%}
+	if {_stored} is not set:
+		set {_stored} to 0
+	if {st.press.animating::%{_id}%} is set:
+		return "&aPressing"
+	if stPressCrankBlock({_b}) is not set:
+		return "&eNeeds hand crank"
+	if stPressHasProcessableInput({_b}) is true:
+		if {_stored} >= {_required}:
+			return "&aReady"
+		return "&aInput loaded"
+	if {_stored} >= {_required}:
+		return "&eCharged • waiting for input"
+	return "&7Drop items in front"
+
+function stMachineInfoTitle(b: block) :: text:
+	if stIsPlacedPress({_b}) is true:
+		return "&6&lPress"
+
+function stMachineInfoSubtitle(b: block) :: text:
+	if stIsPlacedPress({_b}) is true:
+		set {_id} to stPressId({_b})
+		set {_stored} to {st.press.power::%{_id}%}
+		if {_stored} is not set:
+			set {_stored} to 0
+		set {_required} to stPressRequiredPower({_b})
+		set {_status} to stPressStatusText({_b})
+		return "&e%{_stored}%&7/&e%{_required}% ⚡%nl%%{_status}%"
+
+every 2 ticks:
+	loop all players:
+		set {_target} to target block of loop-player
+		if {_target} is not set:
+			stClearPlayerLookHologram(loop-player)
+		else if distance between location of loop-player and location of {_target} > 7:
+			stClearPlayerLookHologram(loop-player)
+		else:
+			set {_machine} to stMachineInfoBlock({_target})
+			set {_title} to stMachineInfoTitle({_machine})
+			set {_subtitle} to stMachineInfoSubtitle({_machine})
+			if {_title} is set:
+				stShowPlayerLookHologram(loop-player, {_machine}, {_title}, {_subtitle})
+			else:
+				stClearPlayerLookHologram(loop-player)
+
+every 1 tick:
+	loop {st.hologram.float.life::*}:
+		set {_id} to loop-index
+		set {_display} to {st.hologram.float.entity::%{_id}%}
+		if {_display} is not set:
+			delete {st.hologram.float.life::%{_id}%}
+			delete {st.hologram.float.maxlife::%{_id}%}
+			delete {st.hologram.float.rise::%{_id}%}
+		else:
+			subtract 1 from {st.hologram.float.life::%{_id}%}
+			set {_loc} to location of {_display}
+			add {st.hologram.float.rise::%{_id}%} to y-coordinate of {_loc}
+			teleport {_display} to {_loc}
+			if {st.hologram.float.maxlife::%{_id}%} > 0:
+				set {_opacity} to ({st.hologram.float.life::%{_id}%} * 255) / {st.hologram.float.maxlife::%{_id}%}
+				if {_opacity} < 0:
+					set {_opacity} to 0
+				set text opacity of {_display} to {_opacity}
+			if {st.hologram.float.life::%{_id}%} <= 0:
+				stDestroyHologram({_display})
+
+on quit:
+	stClearPlayerLookHologram(player)

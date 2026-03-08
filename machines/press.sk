@@ -309,6 +309,8 @@ function stChargePress(b: block, p: player) :: boolean:
 		set {st.press.power::%{_id}%} to 0
 	if {st.press.power::%{_id}%} < {_required}:
 		add 1 to {st.press.power::%{_id}%}
+		if {_p} is set:
+			stShowMachineDeltaHologram({_b}, "&a+1 ⚡", {_p})
 	if {st.press.power::%{_id}%} > {_required}:
 		set {st.press.power::%{_id}%} to {_required}
 	if {st.press.power::%{_id}%} >= {_required}:
@@ -316,14 +318,8 @@ function stChargePress(b: block, p: player) :: boolean:
 		if stTryRunPress({_b}) is true:
 			stStartPressAnimation({_b})
 			set {st.press.power::%{_id}%} to 0
-			if {_p} is set:
-				send "&8[&6Simple Tech&8]&r &aPress completed. Stored power: &e0" to {_p}
 			return true
-		if {_p} is set:
-			send "&8[&6Simple Tech&8]&r &ePress is fully charged but has no valid item in front." to {_p}
 		return false
-	if {_p} is set:
-		send "&8[&6Simple Tech&8]&r &7Stored power: &e%{st.press.power::%{_id}%}%&7/%{_required}%" to {_p}
 	return false
 
 function stClearPressData(b: block):
@@ -380,14 +376,11 @@ on right click on piston:
 	set {_id} to stPressId(event-block)
 	if stIsHandCrank(player's tool) is true:
 		if stPressCrankBlock(event-block) is set:
-			send "&8[&6Simple Tech&8]&r &eThis press already has a hand crank attached." to player
 			stop
 		set {_crank} to stPressSuggestedCrankBlock(event-block, player)
 		if stCanAttachPressCrank(event-block, {_crank}) is false:
-			send "&8[&6Simple Tech&8]&r &eThe hand crank must be attached to a valid free side of the press, not the pressing face." to player
 			stop
 		if stPlacePressCrank(event-block, {_crank}) is false:
-			send "&8[&6Simple Tech&8]&r &cThat hand crank could not be attached there." to player
 			stop
 		set {st.press.crank::%{_id}%} to {_crank}
 		set {st.press.power::%{_id}%} to 0
@@ -397,12 +390,9 @@ on right click on piston:
 			set player's tool to air
 		else:
 			set player's tool to {_tool}
-		send "&8[&6Simple Tech&8]&r &aHand crank attached to the %stPressCrankSide(event-block, {_crank})% of the press." to player
 		stop
 	if stPressCrankBlock(event-block) is not set:
-		send "&8[&6Simple Tech&8]&r &eAttach a hand crank first." to player
 		stop
-	send "&8[&6Simple Tech&8]&r &eUse the attached hand crank lever to power it." to player
 
 on right click on lever:
 	set {_press} to stPressFromCrankBlock(event-block)
