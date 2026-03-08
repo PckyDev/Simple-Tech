@@ -238,9 +238,15 @@ on inventory click:
 		if {_hammerSlot} is -1:
 			stop
 
+		set {_effectLoc} to stInventoryEffectLocation(event-inventory, player)
+		set {_kind} to stPrimitiveProcessKind(slot {_inputSlot} of event-inventory)
 		cancel event
 		stConsumeCrushingInput(event-inventory, {_inputSlot})
 		give {_result} to player
+		if {_kind} is "crush":
+			stPlayAnvilCrushingEffects({_effectLoc})
+		else if {_kind} is "plate":
+			stPlayAnvilPlateEffects({_effectLoc})
 		wait 1 tick
 		stUpdateProcessingResult(event-inventory)
 		stop
