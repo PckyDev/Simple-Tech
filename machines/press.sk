@@ -80,6 +80,81 @@ function stPressFrontBlock(b: block) :: block:
 		add 1 to x-coordinate of {_loc}
 	return block at {_loc}
 
+function stPressBackBlock(b: block) :: block:
+	set {_loc} to location of {_b}
+	set {_facing} to "%facing of {_b}%"
+	if {_facing} contains "north":
+		add 1 to z-coordinate of {_loc}
+	else if {_facing} contains "south":
+		remove 1 from z-coordinate of {_loc}
+	else if {_facing} contains "west":
+		add 1 to x-coordinate of {_loc}
+	else:
+		remove 1 from x-coordinate of {_loc}
+	return block at {_loc}
+
+function stPressFacingName(b: block) :: text:
+	set {_facing} to "%facing of {_b}%"
+	if {_facing} contains "north":
+		return "north"
+	if {_facing} contains "south":
+		return "south"
+	if {_facing} contains "west":
+		return "west"
+	if {_facing} contains "up":
+		return "up"
+	if {_facing} contains "down":
+		return "down"
+	return "east"
+function stShowPressFrame(b: block, headVisible: boolean, baseExtended: boolean):
+	set {_players::*} to all players in radius 16 around location of {_b}
+	if {_players::*} is not set:
+		stop
+	set {_facing} to stPressFacingName({_b})
+	set {_frontLoc} to location of stPressFrontBlock({_b})
+	set {_baseLoc} to location of {_b}
+	if {_baseExtended} is true:
+		if {_facing} is "north":
+			make {_players::*} see {_baseLoc} as piston[facing=north;extended=true]
+		else if {_facing} is "south":
+			make {_players::*} see {_baseLoc} as piston[facing=south;extended=true]
+		else if {_facing} is "west":
+			make {_players::*} see {_baseLoc} as piston[facing=west;extended=true]
+		else if {_facing} is "up":
+			make {_players::*} see {_baseLoc} as piston[facing=up;extended=true]
+		else if {_facing} is "down":
+			make {_players::*} see {_baseLoc} as piston[facing=down;extended=true]
+		else:
+			make {_players::*} see {_baseLoc} as piston[facing=east;extended=true]
+	else:
+		make {_players::*} see {_baseLoc} as original block
+	if {_headVisible} is true:
+		if {_facing} is "north":
+			make {_players::*} see {_frontLoc} as piston_head[facing=north;type=normal;short=false]
+		else if {_facing} is "south":
+			make {_players::*} see {_frontLoc} as piston_head[facing=south;type=normal;short=false]
+		else if {_facing} is "west":
+			make {_players::*} see {_frontLoc} as piston_head[facing=west;type=normal;short=false]
+		else if {_facing} is "up":
+			make {_players::*} see {_frontLoc} as piston_head[facing=up;type=normal;short=false]
+		else if {_facing} is "down":
+			make {_players::*} see {_frontLoc} as piston_head[facing=down;type=normal;short=false]
+		else:
+			make {_players::*} see {_frontLoc} as piston_head[facing=east;type=normal;short=false]
+	else:
+		make {_players::*} see {_frontLoc} as original block
+
+function stStopPressAnimation(b: block):
+	set {_id} to stPressId({_b})
+	stShowPressFrame({_b}, false, false)
+	delete {st.press.animating::%{_id}%}
+
+function stStartPressAnimation(b: block):
+	set {_id} to stPressId({_b})
+	if {st.press.animating::%{_id}%} is set:
+		stStopPressAnimation({_b})
+	set {st.press.animating::%{_id}%} to 8
+
 function stOffsetBlock(b: block, x: number, y: number, z: number) :: block:
 	set {_loc} to location of {_b}
 	add {_x} to x-coordinate of {_loc}
@@ -229,6 +304,7 @@ function stChargePress(b: block, p: player) :: boolean:
 	if {st.press.power::%{_id}%} >= {_required}:
 		set {st.press.power::%{_id}%} to {_required}
 		if stTryRunPress({_b}) is true:
+			stStartPressAnimation({_b})
 			set {st.press.power::%{_id}%} to 0
 			if {_p} is set:
 				send "&8[&6Simple Tech&8]&r &aPress completed. Stored power: &e0" to {_p}
@@ -242,9 +318,12 @@ function stChargePress(b: block, p: player) :: boolean:
 
 function stClearPressData(b: block):
 	set {_id} to stPressId({_b})
+	if {st.press.animating::%{_id}%} is set:
+		stStopPressAnimation({_b})
 	delete {st.press.block::%{_id}%}
 	delete {st.press.power::%{_id}%}
 	delete {st.press.crank::%{_id}%}
+	delete {st.press.animating::%{_id}%}
 
 on place of piston:
 	if stIsPress(item) is false:
@@ -324,19 +403,44 @@ on right click on lever:
 	wait 1 tick
 	stChargePress({_press}, player)
 
+every 1 tick:
+	loop {st.press.animating::*}:
+		set {_id} to loop-index
+		set {_press} to {st.press.block::%{_id}%}
+		if {_press} is not set:
+			delete {st.press.animating::%{_id}%}
+		else if {_press} is not piston:
+			stStopPressAnimation({_press})
+		else:
+			subtract 1 from {st.press.animating::%{_id}%}
+			if {st.press.animating::%{_id}%} = 7:
+				stShowPressFrame({_press}, false, true)
+			else if {st.press.animating::%{_id}%} = 6:
+				stShowPressFrame({_press}, true, true)
+			else if {st.press.animating::%{_id}%} = 4:
+				stShowPressFrame({_press}, true, true)
+			else if {st.press.animating::%{_id}%} = 2:
+				stShowPressFrame({_press}, false, true)
+			else if {st.press.animating::%{_id}%} = 1:
+				stShowPressFrame({_press}, false, false)
+			if {st.press.animating::%{_id}%} <= 0:
+				stStopPressAnimation({_press})
+
 every 5 ticks:
 	loop {st.press.block::*}:
 		if loop-value is set:
 			if loop-value is piston:
 				set {_id} to stPressId(loop-value)
 				if stPressCrankBlock(loop-value) is set:
-					if stPressCrankBlock(loop-value) is not lever:
-						delete {st.press.crank::%{_id}%}
-						delete {st.press.power::%{_id}%}
+					if {st.press.animating::%{_id}%} is not set:
+						if stPressCrankBlock(loop-value) is not lever:
+							delete {st.press.crank::%{_id}%}
+							delete {st.press.power::%{_id}%}
 				if {st.press.power::%{_id}%} > stPressRequiredPower(loop-value):
 					set {st.press.power::%{_id}%} to stPressRequiredPower(loop-value)
 				if {st.press.power::%{_id}%} >= stPressRequiredPower(loop-value):
 					if stTryRunPress(loop-value) is true:
+						stStartPressAnimation(loop-value)
 						set {st.press.power::%{_id}%} to 0
 			else:
 				stClearPressData(loop-value)
