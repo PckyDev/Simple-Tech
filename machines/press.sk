@@ -80,6 +80,118 @@ function stPressFrontBlock(b: block) :: block:
 		add 1 to x-coordinate of {_loc}
 	return block at {_loc}
 
+function stOffsetBlock(b: block, x: number, y: number, z: number) :: block:
+	set {_loc} to location of {_b}
+	add {_x} to x-coordinate of {_loc}
+	add {_y} to y-coordinate of {_loc}
+	add {_z} to z-coordinate of {_loc}
+	return block at {_loc}
+
+function stSameBlock(a: block, b: block) :: boolean:
+	if {_a} is not set:
+		return false
+	if {_b} is not set:
+		return false
+	if stPressId({_a}) = stPressId({_b}):
+		return true
+	return false
+
+function stPressCrankBlock(b: block) :: block:
+	set {_id} to stPressId({_b})
+	if {st.press.crank::%{_id}%} is set:
+		return {st.press.crank::%{_id}%}
+
+function stPressCrankSide(b: block, crank: block) :: text:
+	set {_pressLoc} to location of {_b}
+	set {_crankLoc} to location of {_crank}
+	if y-coordinate of {_crankLoc} > y-coordinate of {_pressLoc}:
+		return "top"
+	if x-coordinate of {_crankLoc} > x-coordinate of {_pressLoc}:
+		return "east"
+	if x-coordinate of {_crankLoc} < x-coordinate of {_pressLoc}:
+		return "west"
+	if z-coordinate of {_crankLoc} > z-coordinate of {_pressLoc}:
+		return "south"
+	return "north"
+
+function stPressSuggestedCrankBlock(b: block, p: player) :: block:
+	set {_pressLoc} to location of {_b}
+	set {_playerLoc} to location of {_p}
+	set {_dx} to x-coordinate of {_playerLoc} - x-coordinate of {_pressLoc}
+	set {_dz} to z-coordinate of {_playerLoc} - z-coordinate of {_pressLoc}
+	set {_absDx} to {_dx}
+	set {_absDz} to {_dz}
+	if {_absDx} < 0:
+		set {_absDx} to {_absDx} * -1
+	if {_absDz} < 0:
+		set {_absDz} to {_absDz} * -1
+	if {_absDx} > {_absDz}:
+		if {_dx} >= 0:
+			return stOffsetBlock({_b}, 1, 0, 0)
+		return stOffsetBlock({_b}, -1, 0, 0)
+	if {_dz} >= 0:
+		return stOffsetBlock({_b}, 0, 0, 1)
+	return stOffsetBlock({_b}, 0, 0, -1)
+
+function stCanAttachPressCrank(b: block, crank: block) :: boolean:
+	if {_crank} is not set:
+		return false
+	if {_crank} is not air:
+		return false
+	set {_side} to stPressCrankSide({_b}, {_crank})
+	if {_side} is "top":
+		return false
+	if stSameBlock({_crank}, stPressFrontBlock({_b})) is true:
+		return false
+	if {_side} is "north":
+		return true
+	if {_side} is "south":
+		return true
+	if {_side} is "east":
+		return true
+	if {_side} is "west":
+		return true
+	return false
+
+function stPlacePressCrank(b: block, crank: block) :: boolean:
+	set {_side} to stPressCrankSide({_b}, {_crank})
+	if {_side} is "north":
+		set block data of {_crank} to lever[face=wall;facing=north]
+	else if {_side} is "south":
+		set block data of {_crank} to lever[face=wall;facing=south]
+	else if {_side} is "east":
+		set block data of {_crank} to lever[face=wall;facing=east]
+	else if {_side} is "west":
+		set block data of {_crank} to lever[face=wall;facing=west]
+	else:
+		return false
+	return true
+
+function stPressFromCrankBlock(b: block) :: block:
+	set {_candidate} to stOffsetBlock({_b}, 0, -1, 0)
+	if stIsPlacedPress({_candidate}) is true:
+		if stSameBlock(stPressCrankBlock({_candidate}), {_b}) is true:
+			return {_candidate}
+	set {_candidate} to stOffsetBlock({_b}, 1, 0, 0)
+	if stIsPlacedPress({_candidate}) is true:
+		if stSameBlock(stPressCrankBlock({_candidate}), {_b}) is true:
+			return {_candidate}
+	set {_candidate} to stOffsetBlock({_b}, -1, 0, 0)
+	if stIsPlacedPress({_candidate}) is true:
+		if stSameBlock(stPressCrankBlock({_candidate}), {_b}) is true:
+			return {_candidate}
+	set {_candidate} to stOffsetBlock({_b}, 0, 0, 1)
+	if stIsPlacedPress({_candidate}) is true:
+		if stSameBlock(stPressCrankBlock({_candidate}), {_b}) is true:
+			return {_candidate}
+	set {_candidate} to stOffsetBlock({_b}, 0, 0, -1)
+	if stIsPlacedPress({_candidate}) is true:
+		if stSameBlock(stPressCrankBlock({_candidate}), {_b}) is true:
+			return {_candidate}
+
+function stPressRequiredPower(b: block) :: number:
+	return 4
+
 function stPressingResult(i: item) :: item:
 	set {_result} to stPrimitiveProcessingResult({_i})
 	if {_result} is not set:
@@ -105,6 +217,29 @@ function stTryRunPress(b: block) :: boolean:
 			return true
 	return false
 
+function stChargePress(b: block, p: player) :: boolean:
+	set {_id} to stPressId({_b})
+	set {_required} to stPressRequiredPower({_b})
+	if {st.press.power::%{_id}%} is not set:
+		set {st.press.power::%{_id}%} to 0
+	if {st.press.power::%{_id}%} < {_required}:
+		add 1 to {st.press.power::%{_id}%}
+	if {st.press.power::%{_id}%} > {_required}:
+		set {st.press.power::%{_id}%} to {_required}
+	if {st.press.power::%{_id}%} >= {_required}:
+		set {st.press.power::%{_id}%} to {_required}
+		if stTryRunPress({_b}) is true:
+			set {st.press.power::%{_id}%} to 0
+			if {_p} is set:
+				send "&8[&6Simple Tech&8]&r &aPress completed. Stored power: &e0" to {_p}
+			return true
+		if {_p} is set:
+			send "&8[&6Simple Tech&8]&r &ePress is fully charged but has no valid item in front." to {_p}
+		return false
+	if {_p} is set:
+		send "&8[&6Simple Tech&8]&r &7Stored power: &e%{st.press.power::%{_id}%}%&7/%{_required}%" to {_p}
+	return false
+
 function stClearPressData(b: block):
 	set {_id} to stPressId({_b})
 	delete {st.press.block::%{_id}%}
@@ -121,10 +256,25 @@ on break of piston:
 	if stIsPlacedPress(event-block) is false:
 		stop
 	cancel drops
+	set {_crank} to stPressCrankBlock(event-block)
+	if {_crank} is set:
+		if {_crank} is lever:
+			set {_crank} to air
 	drop stPress() at location of event-block
-	if {st.press.crank::%stPressId(event-block)%} is true:
+	if {_crank} is set:
 		drop stHandCrank() at location of event-block
 	stClearPressData(event-block)
+
+on break of lever:
+	set {_press} to stPressFromCrankBlock(event-block)
+	if stIsPlacedPress({_press}) is false:
+		stop
+	if stSameBlock(stPressCrankBlock({_press}), event-block) is false:
+		stop
+	cancel drops
+	delete {st.press.crank::%stPressId({_press})%}
+	delete {st.press.power::%stPressId({_press})%}
+	drop stHandCrank() at location of event-block
 
 on piston extend:
 	if stIsPlacedPress(event-block) is true:
@@ -140,38 +290,53 @@ on right click on piston:
 	cancel event
 	set {_id} to stPressId(event-block)
 	if stIsHandCrank(player's tool) is true:
-		if {st.press.crank::%{_id}%} is true:
+		if stPressCrankBlock(event-block) is set:
 			send "&8[&6Simple Tech&8]&r &eThis press already has a hand crank attached." to player
 			stop
-		set {st.press.crank::%{_id}%} to true
+		set {_crank} to stPressSuggestedCrankBlock(event-block, player)
+		if stCanAttachPressCrank(event-block, {_crank}) is false:
+			send "&8[&6Simple Tech&8]&r &eThe hand crank must be attached to a valid free side of the press, not the pressing face." to player
+			stop
+		if stPlacePressCrank(event-block, {_crank}) is false:
+			send "&8[&6Simple Tech&8]&r &cThat hand crank could not be attached there." to player
+			stop
+		set {st.press.crank::%{_id}%} to {_crank}
+		set {st.press.power::%{_id}%} to 0
 		set {_tool} to player's tool
 		set amount of {_tool} to amount of {_tool} - 1
 		if amount of {_tool} <= 0:
 			set player's tool to air
 		else:
 			set player's tool to {_tool}
-		send "&8[&6Simple Tech&8]&r &aHand crank attached to the press." to player
+		send "&8[&6Simple Tech&8]&r &aHand crank attached to the %stPressCrankSide(event-block, {_crank})% of the press." to player
 		stop
-	if {st.press.crank::%{_id}%} is not true:
+	if stPressCrankBlock(event-block) is not set:
 		send "&8[&6Simple Tech&8]&r &eAttach a hand crank first." to player
 		stop
-	add 1 to {st.press.power::%{_id}%}
-	if {st.press.power::%{_id}%} > 32:
-		set {st.press.power::%{_id}%} to 32
-	if {st.press.power::%{_id}%} >= 4:
-		if stTryRunPress(event-block) is true:
-			remove 4 from {st.press.power::%{_id}%}
-			send "&8[&6Simple Tech&8]&r &aPress completed. Stored power: &e%{st.press.power::%{_id}%}%" to player
-			stop
-	send "&8[&6Simple Tech&8]&r &7Stored power: &e%{st.press.power::%{_id}%}%&7/4" to player
+	send "&8[&6Simple Tech&8]&r &eUse the attached hand crank lever to power it." to player
+
+on right click on lever:
+	set {_press} to stPressFromCrankBlock(event-block)
+	if stIsPlacedPress({_press}) is false:
+		stop
+	if stSameBlock(stPressCrankBlock({_press}), event-block) is false:
+		stop
+	wait 1 tick
+	stChargePress({_press}, player)
 
 every 5 ticks:
 	loop {st.press.block::*}:
 		if loop-value is set:
 			if loop-value is piston:
 				set {_id} to stPressId(loop-value)
-				if {st.press.power::%{_id}%} >= 4:
+				if stPressCrankBlock(loop-value) is set:
+					if stPressCrankBlock(loop-value) is not lever:
+						delete {st.press.crank::%{_id}%}
+						delete {st.press.power::%{_id}%}
+				if {st.press.power::%{_id}%} > stPressRequiredPower(loop-value):
+					set {st.press.power::%{_id}%} to stPressRequiredPower(loop-value)
+				if {st.press.power::%{_id}%} >= stPressRequiredPower(loop-value):
 					if stTryRunPress(loop-value) is true:
-						remove 4 from {st.press.power::%{_id}%}
+						set {st.press.power::%{_id}%} to 0
 			else:
 				stClearPressData(loop-value)
