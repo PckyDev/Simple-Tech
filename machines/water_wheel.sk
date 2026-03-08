@@ -238,6 +238,11 @@ on right click on barrel:
 		stop
 	cancel event
 
+on right click on spruce trapdoor:
+	if stIsWaterWheelPart(event-block) is false:
+		stop
+	cancel event
+
 on break:
 	set {_id} to stWaterWheelPartMachineId(event-block)
 	if {_id} is not set:
