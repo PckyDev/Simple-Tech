@@ -5,7 +5,7 @@ function stIronFrame() :: item:
 
 function stCopperFrame() :: item:
 	set {_item} to copper grate named "&6Copper Frame"
-	set lore of {_item} to "&7A conductive machine frame." and "&8Tier 0 • Primitive Tech" and "&0st:copper_frame"
+	set lore of {_item} to "&7A sturdy machine frame." and "&8Tier 0 • Primitive Tech" and "&0st:copper_frame"
 	return {_item}
 
 function stIsFrame(i: item) :: boolean:

@@ -1,13 +1,68 @@
+function stParseSingleItem(name: text) :: item:
+	set {_item} to {_name} parsed as item
+	if {_item} is set:
+		return {_item}
+	set {_type} to {_name} parsed as itemtype
+	if {_type} is set:
+		set {_item} to 1 of {_type}
+		if {_item} is set:
+			return {_item}
+
+function stFindItemByRawName(rawId: text) :: item:
+	loop all items:
+		if raw name of loop-item is {_rawId}:
+			set {_item} to 1 of loop-item
+			if {_item} is set:
+				return {_item}
+
+function stIronShaftBase() :: item:
+	if {st.cache.iron_shaft_base} is set:
+		return {st.cache.iron_shaft_base}
+	set {_item} to stFindItemByRawName("minecraft:iron_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("minecraft:iron_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("iron_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("iron chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("chain")
+	if {_item} is set:
+		if raw name of {_item} contains "iron_chain":
+			set {st.cache.iron_shaft_base} to {_item}
+			return {_item}
+	if {_item} is not set:
+		set {_item} to iron nugget
+	return {_item}
+
+function stCopperShaftBase() :: item:
+	if {st.cache.copper_shaft_base} is set:
+		return {st.cache.copper_shaft_base}
+	set {_item} to stFindItemByRawName("minecraft:copper_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("minecraft:copper_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("copper_chain")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("copper chain")
+	if {_item} is set:
+		if raw name of {_item} contains "copper_chain":
+			set {st.cache.copper_shaft_base} to {_item}
+			return {_item}
+	if {_item} is not set:
+		set {_item} to copper nugget
+	return {_item}
+
 function stIronShaft() :: item:
-	set {_item} to "minecraft:chain" parsed as item
+	set {_item} to stIronShaftBase()
 	set {_item} to {_item} named "&fIron Shaft"
-	set lore of {_item} to "&7Transfers force through a machine." and "&8Tier 0 • Primitive Tech" and "&0st:iron_shaft"
+	set lore of {_item} to "&7A sturdy machine part." and "&8Tier 0 • Primitive Tech" and "&0st:iron_shaft"
 	return {_item}
 
 function stCopperShaft() :: item:
-	set {_item} to "minecraft:copper_chain" parsed as item
+	set {_item} to stCopperShaftBase()
 	set {_item} to {_item} named "&6Copper Shaft"
-	set lore of {_item} to "&7Transfers force through a machine." and "&8Tier 0 • Primitive Tech" and "&0st:copper_shaft"
+	set lore of {_item} to "&7A sturdy machine part." and "&8Tier 0 • Primitive Tech" and "&0st:copper_shaft"
 	return {_item}
 
 function stIsShaft(i: item) :: boolean:
