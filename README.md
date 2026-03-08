@@ -1,4 +1,6 @@
-# Simple Tech
+<p align="center">
+	<img src="https://github.com/PckyDev/Simple-Tech/blob/main/src/branding/logo.png?raw=true" />
+</p>
 
 A modular Skript-based tech ecosystem for vanilla Minecraft servers.
 
