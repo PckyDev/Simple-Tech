@@ -1,0 +1,155 @@
+options:
+	st-prefix: &8[&6Simple Tech&8]&r
+
+function stHammer() :: item:
+	set {_item} to mace named "&6Hammer"
+	set lore of {_item} to "&7Used to crush raw ores in an anvil." and "&7Not consumed during crushing." and "&8Tier 0 • Primitive Tech" and "&0st:hammer"
+	set {_item} to unbreakable {_item}
+	return {_item}
+
+function stIsHammer(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not mace:
+		return false
+	return stHasId({_i}, "st:hammer")
+
+function stSlotIsEmpty(inv: inventory, slotNumber: number) :: boolean:
+	if slot {_slotNumber} of {_inv} is air:
+		return true
+	if slot {_slotNumber} of {_inv} is empty:
+		return true
+	return false
+
+function stIsHammerRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is iron ingot:
+		if slot 2 of {_inv} is iron ingot:
+			if slot 3 of {_inv} is iron ingot:
+				if slot 4 of {_inv} is iron ingot:
+					if slot 5 of {_inv} is stick:
+						if slot 6 of {_inv} is iron ingot:
+							if stSlotIsEmpty({_inv}, 7) is true:
+								if slot 8 of {_inv} is stick:
+									if stSlotIsEmpty({_inv}, 9) is true:
+										return true
+	return false
+
+function stConsumeSlot(inv: inventory, slotNumber: number):
+	set {_item} to slot {_slotNumber} of {_inv}
+	if {_item} is air:
+		stop
+	set amount of {_item} to amount of {_item} - 1
+	if amount of {_item} <= 0:
+		set slot {_slotNumber} of {_inv} to air
+	else:
+		set slot {_slotNumber} of {_inv} to {_item}
+
+function stConsumeHammerRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 1)
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 3)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 8)
+
+function stIsCraftingInventory(inv: inventory) :: boolean:
+	if type of {_inv} is workbench inventory:
+		return true
+	return false
+
+function stCustomCraftingResult(inv: inventory) :: item:
+	if stIsHammerRecipe({_inv}) is true:
+		return stHammer()
+	if stIsHandCrankRecipe({_inv}) is true:
+		return stHandCrank()
+	if stIsIronFrameRecipe({_inv}) is true:
+		return stIronFrame()
+	if stIsCopperFrameRecipe({_inv}) is true:
+		return stCopperFrame()
+	if stIsIronShaftRecipe({_inv}) is true:
+		return stIronShaft()
+	if stIsCopperShaftRecipe({_inv}) is true:
+		return stCopperShaft()
+	if stIsPressRecipe({_inv}) is true:
+		return stPress()
+
+function stConsumeCustomCraftingRecipe(inv: inventory):
+	if stIsHammerRecipe({_inv}) is true:
+		stConsumeHammerRecipe({_inv})
+		stop
+	if stIsHandCrankRecipe({_inv}) is true:
+		stConsumeHandCrankRecipe({_inv})
+		stop
+	if stIsIronFrameRecipe({_inv}) is true:
+		stConsumeIronFrameRecipe({_inv})
+		stop
+	if stIsCopperFrameRecipe({_inv}) is true:
+		stConsumeCopperFrameRecipe({_inv})
+		stop
+	if stIsIronShaftRecipe({_inv}) is true:
+		stConsumeIronShaftRecipe({_inv})
+		stop
+	if stIsCopperShaftRecipe({_inv}) is true:
+		stConsumeCopperShaftRecipe({_inv})
+		stop
+	if stIsPressRecipe({_inv}) is true:
+		stConsumePressRecipe({_inv})
+
+function stIsCustomCraftingResult(i: item) :: boolean:
+	if stIsHammer({_i}) is true:
+		return true
+	if stIsHandCrank({_i}) is true:
+		return true
+	if stIsFrame({_i}) is true:
+		return true
+	if stIsShaft({_i}) is true:
+		return true
+	if stIsPress({_i}) is true:
+		return true
+	return false
+
+function stUpdateHammerResult(inv: inventory):
+	set {_result} to stCustomCraftingResult({_inv})
+	if {_result} is set:
+		set slot 0 of {_inv} to {_result}
+		stop
+	if stIsCustomCraftingResult(slot 0 of {_inv}) is true:
+		set slot 0 of {_inv} to air
+
+every 1 tick:
+	loop all players:
+		set {_craftInv} to top inventory of loop-player
+		if stIsCraftingInventory({_craftInv}) is true:
+			stUpdateHammerResult({_craftInv})
+
+on inventory click:
+	set {_craftInv} to top inventory of player
+	if stIsCraftingInventory({_craftInv}) is true:
+		if raw index of clicked slot is 0:
+			set {_result} to stCustomCraftingResult({_craftInv})
+			if {_result} is set:
+				cancel event
+				stConsumeCustomCraftingRecipe({_craftInv})
+				give {_result} to player
+				wait 1 tick
+				stUpdateHammerResult({_craftInv})
+				stop
+		wait 1 tick
+		set {_craftInv} to top inventory of player
+		if stIsCraftingInventory({_craftInv}) is true:
+			stUpdateHammerResult({_craftInv})
+
+on inventory drag:
+	set {_craftInv} to top inventory of player
+	if stIsCraftingInventory({_craftInv}) is true:
+		wait 1 tick
+		set {_craftInv} to top inventory of player
+		if stIsCraftingInventory({_craftInv}) is true:
+			stUpdateHammerResult({_craftInv})
+
+on damage:
+	if attacker is a player:
+		if stIsHammer(attacker's tool) is true:
+			cancel event
+			send "{@st-prefix} &cThe hammer is a processing tool, not a weapon." to attacker

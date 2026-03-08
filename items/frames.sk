@@ -1,0 +1,58 @@
+function stIronFrame() :: item:
+	set {_item} to iron bars named "&fIron Frame"
+	set lore of {_item} to "&7A sturdy machine frame." and "&8Tier 0 • Primitive Tech" and "&0st:iron_frame"
+	return {_item}
+
+function stCopperFrame() :: item:
+	set {_item} to copper grate named "&6Copper Frame"
+	set lore of {_item} to "&7A conductive machine frame." and "&8Tier 0 • Primitive Tech" and "&0st:copper_frame"
+	return {_item}
+
+function stIsFrame(i: item) :: boolean:
+	return stHasAnyId({_i}, "st:iron_frame", "st:copper_frame", "st:none")
+
+function stIsIronFrameRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is iron ingot:
+		if slot 2 of {_inv} is iron ingot:
+			if slot 3 of {_inv} is iron ingot:
+				if slot 4 of {_inv} is iron ingot:
+					if stSlotIsEmpty({_inv}, 5) is true:
+						if slot 6 of {_inv} is iron ingot:
+							if slot 7 of {_inv} is iron ingot:
+								if slot 8 of {_inv} is iron ingot:
+									if slot 9 of {_inv} is iron ingot:
+										return true
+	return false
+
+function stIsCopperFrameRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is copper ingot:
+		if slot 2 of {_inv} is copper ingot:
+			if slot 3 of {_inv} is copper ingot:
+				if slot 4 of {_inv} is copper ingot:
+					if stSlotIsEmpty({_inv}, 5) is true:
+						if slot 6 of {_inv} is copper ingot:
+							if slot 7 of {_inv} is copper ingot:
+								if slot 8 of {_inv} is copper ingot:
+									if slot 9 of {_inv} is copper ingot:
+										return true
+	return false
+
+function stConsumeIronFrameRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 1)
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 3)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 7)
+	stConsumeSlot({_inv}, 8)
+	stConsumeSlot({_inv}, 9)
+
+function stConsumeCopperFrameRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 1)
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 3)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 7)
+	stConsumeSlot({_inv}, 8)
+	stConsumeSlot({_inv}, 9)

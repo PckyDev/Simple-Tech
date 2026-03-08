@@ -2,7 +2,7 @@
 
 A modular Skript-based tech ecosystem for vanilla Minecraft servers.
 
-Simple Tech adds automation, processing chains, power-like progression, and utility systems **without custom textures or custom blocks**. It uses vanilla blocks/items plus custom names, lore, recipes, metadata, and GUIs to create a scalable tech experience.
+Simple Tech adds automation, processing chains, power-like progression, and utility systems based on vanilla redstone mechanics **without custom textures or custom blocks**. It uses vanilla blocks/items plus custom names, lore, recipes, metadata, and GUIs to create a scalable tech experience.
 
 ---
 
@@ -19,11 +19,10 @@ Simple Tech adds automation, processing chains, power-like progression, and util
 - No resource pack requirement.
 - No custom block models/textures.
 - No custom entities required.
-- Everything must be representable with vanilla items/blocks and Skript logic.
+- Everything must be representable with vanilla items/blocks, holograms, block displays, and Skript logic.
 
 ### Design inspirations
 - Create mod: approachable mechanical progression and transport/processing feel.
-- Modern Industrialization: clean tiered processing, machine chains, and scalable complexity.
 
 ---
 
@@ -37,7 +36,7 @@ Simple Tech should feel like “what vanilla might look like with light industri
 - **Tiered:** early game is cheap and simple, late game is efficient and complex.
 - **Consistent:** same naming, GUI patterns, and recipe language everywhere.
 - **Safe:** no irreversible actions without confirmation/feedback.
-- **Low-noise onboarding:** tutorial guidance should appear at meaningful milestones, not as repeating chat spam.
+- **Low-noise onboarding:** tutorial guidance appears at meaningful milestones.
 
 ---
 
@@ -45,6 +44,8 @@ Simple Tech should feel like “what vanilla might look like with light industri
 
 Because we are not adding real custom blocks, “machines” are represented by:
 - A placed vanilla block (machine base).
+- Look at the block to show a hologram above it with the machine name, progress, and status.
+- Right click the block to open a custom GUI with input/output slots, progress bars, and action buttons.
 - Optional marker item in the block name/lore or linked variable data.
 - Interaction handlers (right-click, inventory click, break/place, hopper events).
 - Per-machine state in variables (progress, buffers, upgrades, owner, mode).
@@ -56,10 +57,14 @@ Because we are not adding real custom blocks, “machines” are represented by:
 - Recipe cache/indexes: `{st.recipe::<type>::<id>::*}`
 - GUI session state: `{st.gui::%uuid of player%::*}`
 
-### Naming conventions
+### Naming and audio/visual conventions
 - Prefix all options/variables/functions with `st`.
-- Use lowercase snake-like keys for IDs: `crushed_iron`, `steam_press`.
-- Keep script filenames prefixed by module number for load/read order.
+- Use lowercase snake-like keys for IDs: `crushed_iron`.
+- Use Title Case for display names: `Crushed Iron`.
+- Items have enchant glint to distinguish them from vanilla items, but no custom textures.
+- GUIs have consistent color schemes and slot patterns.
+- Use satisfying sound effects for interactions (e.g. anvil sounds for pressing, furnace sounds for smelting).
+- Use particle effects for interactions (e.g. smoke for burning, sparks for pressing).
 
 ---
 
@@ -67,51 +72,25 @@ Because we are not adding real custom blocks, “machines” are represented by:
 
 ```text
 simple tech/
+	wiki/
+		... (documentation and guides for players and admins)
+	apis/
+		... (reusable systems for all scripts, like power/heat/fuel management, logistics routing, etc.)
+	items/
+		... (item definition scripts, one skript per item, includes recipe definitions that produce the item)
+	machines/
+		... (machine logic scripts, one skript per machine, includes recipe definitions that create the machine, processing logic, GUI handling, interaction handlers, upgrade logic, etc.)
+	
 	README.md
-	st_00_core.sk
-	st_01_items.sk
-	st_02_recipes.sk
-	st_03_gui.sk
-	st_04_machines_basic.sk
-	st_05_machines_advanced.sk
-	st_06_power_and_heat.sk
-	st_07_logistics.sk
-	st_08_world_interactions.sk
-	st_09_balance_and_debug.sk
+	core.sk (core utilities, common options, message formatting, permission checks)
 ```
-
-### Module responsibilities
-- `st_00_core.sk`: constants, utility functions, permission checks, parsing helpers.
-- `st_01_items.sk`: custom item registration helpers (name/lore flags, give/check functions).
-- `st_02_recipes.sk`: recipe definitions and recipe lookup logic.
-- `st_03_gui.sk`: reusable menu framework (pagination, buttons, confirmation slots).
-- `st_04_machines_basic.sk`: entry-tier machines and simple processors.
-- `st_05_machines_advanced.sk`: multi-step processors, upgraded machines.
-- `st_06_power_and_heat.sk`: abstract energy/heat/fuel systems.
-- `st_07_logistics.sk`: item movement, filters, routing behavior.
-- `st_08_world_interactions.sk`: environmental effects, ore washing, water/heat bonuses.
-- `st_09_balance_and_debug.sk`: admin commands, tuning values, diagnostics.
-
-### Module-to-Features map
-- `st_00_core.sk` -> Core Framework, Performance, Persistence, Multiplayer Safety
-- `st_01_items.sk` -> Custom Item System, Progression Tiers
-- `st_02_recipes.sk` -> Recipe System, Economy & Balance
-- `st_03_gui.sk` -> GUI Framework, Player Experience & UX
-- `st_04_machines_basic.sk` -> Basic Machines, Tier 0/Tier 1 loops
-- `st_05_machines_advanced.sk` -> Advanced Machines, Tier 2/Tier 3 loops, Upgrades
-- `st_06_power_and_heat.sk` -> Heat / Power / Fuel Systems
-- `st_07_logistics.sk` -> Logistics & Automation
-- `st_08_world_interactions.sk` -> World Interactions
-- `st_09_balance_and_debug.sk` -> Admin & Debug Tooling, QA & Test Coverage, final balance passes
-
-Tracking checklist lives in [FEATURES.md](FEATURES.md).
 
 ---
 
 ## 5) Progression Model
 
 ### Tier 0: Primitive Tech
-- Manual processing tools.
+- Manual processing.
 - Low-throughput conversion recipes.
 - No persistent machine power required.
 
@@ -137,18 +116,12 @@ Tracking checklist lives in [FEATURES.md](FEATURES.md).
 Custom items are vanilla items with controlled metadata:
 - Display name
 - Lore
-- Optional enchant glow (hidden enchants)
+- Enchant glow/glint (hidden enchants)
 - Persistent ID in lore or stored identification strategy
-
-### Example item categories
-- Components: plates, rods, gears, circuits
-- Processed materials: crushed ore, dusts, ingots
-- Machine parts: casings, coils, press heads
-- Utilities: wrench, linker, recipe book
 
 ### Rules
 - Every custom item must have:
-	- `id`
+    - `id`
 	- human-readable `name`
 	- `tier`
 	- short `description`
@@ -156,215 +129,61 @@ Custom items are vanilla items with controlled metadata:
 
 ---
 
-## 7) Recipe System
+## 7) Current Prototype Content
 
-Support multiple recipe styles:
-- Crafting-grid style recipes.
-- Machine recipes with `input -> output`.
-- Multi-output recipes with chances/byproducts.
-- Timed recipes.
-- Heat or fuel gated recipes.
+### Primitive crushing
+- `Hammer`
+	- Uses the vanilla mace appearance.
+	- Crafted from iron ingots and sticks.
+	- Cannot be used as a weapon.
+	- Used in an anvil to crush raw ores and flatten ingots.
+- `Crushed Iron`
+	- Made by combining a hammer with `Raw Iron` in an anvil.
+	- Produces `2x Crushed Iron`.
+	- Can be smelted into `Iron Ingot` with custom furnace progress and flame behavior.
+- `Crushed Gold`
+	- Made by combining a hammer with `Raw Gold` in an anvil.
+	- Produces `2x Crushed Gold`.
+	- Can be smelted into `Gold Ingot` with custom furnace progress and flame behavior.
+- `Crushed Copper`
+	- Made by combining a hammer with `Raw Copper` in an anvil.
+	- Produces `2x Crushed Copper`.
+	- Can be smelted into `Copper Ingot` with custom furnace progress and flame behavior.
 
-### Recipe schema (conceptual)
-- `id`
-- `type` (`crafting`, `pressing`, `smelting_plus`, etc.)
-- `inputs::*`
-- `outputs::*`
-- `duration`
-- `energy_cost` or `fuel_cost`
-- `requirements::*` (tier, machine level, catalyst)
+### Primitive plates
+- `Iron Plate`
+	- Made by combining a hammer with an `Iron Ingot` in an anvil.
+	- Uses the vanilla iron pressure plate appearance.
+- `Gold Plate`
+	- Made by combining a hammer with a `Gold Ingot` in an anvil.
+	- Uses the vanilla gold pressure plate appearance.
+- `Copper Plate`
+	- Made by combining a hammer with a `Copper Ingot` in an anvil.
+	- Uses the vanilla acacia pressure plate appearance.
 
----
+### Mechanical components
+- `Hand Crank`
+	- Crafted from `1x Iron Plate` and `1x Stick`.
+	- Attaches to machines to provide manual stored power.
+	- Uses the vanilla lever appearance.
+- `Iron Frame`
+	- Crafted from 8 `Iron Ingots` in a ring.
+	- Uses the vanilla iron bars appearance.
+- `Copper Frame`
+	- Crafted from 8 `Copper Ingots` in a ring.
+	- Uses the vanilla copper grate appearance.
+- `Iron Shaft`
+	- Crafted from 3 `Iron Plates` in a vertical line.
+	- Uses the vanilla chain appearance.
+- `Copper Shaft`
+	- Crafted from 3 `Copper Plates` in a vertical line.
+	- Uses the vanilla copper chain appearance.
 
-## 8) GUI System
-
-GUIs are essential for usability and should be standardized.
-
-### Required GUI types
-- Main Tech Menu
-- Recipe Browser
-- Machine Status Screen
-- Item/Component Guide
-- Admin Balance Menu
-
-### GUI UX standards
-- Slot 0/8 reserved for navigation/back/close patterns.
-- Color-coded status indicators:
-	- Green = ready/active
-	- Yellow = waiting/input missing
-	- Red = blocked/error
-- Every actionable slot has hover/lore guidance.
-- Every machine has a consistent status layout (progress, input, output, mode).
-
----
-
-## 9) Machine Patterns
-
-Each machine should follow one standard lifecycle:
-1. Placement/register machine state.
-2. Validate structure/context.
-3. Accept inputs.
-4. Process over time.
-5. Emit outputs/byproducts.
-6. Persist state and recover on reload.
-
-### Suggested starter machines
-- Crusher (ore -> crushed ore)
-- Press (ingot -> plate)
-- Mixer (2+ ingredients -> compound)
-- Burner/Boiler (fuel to heat buffer)
-- Basic Assembler (component combinations)
-
----
-
-## 10) Commands & Permissions
-
-### Player-facing
-- `/st` opens main menu.
-- `/st recipes [query]` opens filtered recipe browser.
-- `/st help` gives usage summary.
-
-### Admin-facing
-- `/st reload` reloads Simple Tech scripts/config variables.
-- `/st give <player> <item_id> [amount]`
-- `/st debug machine` inspect targeted machine data.
-- `/stbalance` shows current balance defaults and key tuning values.
-- `/stbalance <key> [value]` inspects or edits a balance key.
-
-### Permission nodes
-- `simpletech.use`
-- `simpletech.recipes`
-- `simpletech.admin`
-- `simpletech.debug`
-
----
-
-## 11) Balancing Guidelines
-
-- Early-tier recipes should be inexpensive and teach the system.
-- Mid-tier should reward automation over manual crafting.
-- Late-tier should reward optimization, not raw grind only.
-- Avoid item duplication exploits with strict output/input checks.
-- Keep processing times meaningful but not frustrating.
-
----
-
-## 12) Performance & Safety
-
-- Prefer scheduled loops over per-tick heavy scans.
-- Track active machines list rather than scanning entire worlds.
-- Cache recipe lookups by ID/type.
-- Use guard clauses aggressively in click/place/break events.
-- Add fail-safe rollback for destructive inventory operations.
-
----
-
-## 13) Testing Checklist
-
-### Functional
-- Item creation and identification works reliably.
-- Recipe matching is deterministic.
-- GUI actions always map to correct machine/data.
-- Machine state survives reloads/restarts.
-
-### Multiplayer
-- Two players using same machine cannot dupe items.
-- GUI sessions are isolated per player.
-- Permission checks are always enforced.
-
-### Edge cases
-- Full output inventories.
-- Missing fuel mid-process.
-- Broken machine during processing.
-- Server reload during active operations.
-
----
-
-## 14) Implementation Roadmap
-
-### Phase 1 (Foundation)
-- Core utilities
-- Item registry helpers
-- Recipe registry and lookup
-- Main menu + recipe browser GUI
-
-### Phase 2 (First playable loop)
-- Crusher + Press machines
-- 10–20 basic recipes
-- One fuel/heat mechanic
-
-### Phase 3 (Expansion)
-- Advanced machines and byproducts
-- Logistics features (filters/routing)
-- Upgrades and machine tiers
-
-### Phase 4 (Polish)
-- Balance pass
-- Better feedback/audio/messages
-- Debug/admin tooling finalization
-
----
-
-## 15) Definition of Done (MVP)
-
-Simple Tech MVP is complete when:
-- Players can craft and use at least 3 machines.
-- There is a clear Tier 0 -> Tier 1 progression path.
-- Recipe browser GUI is functional and discoverable.
-- At least 25 custom item definitions exist.
-- No known item duplication or deletion bugs remain.
-
----
-
-## 16) Next Build Step
-
-Recommended first script to implement: `st_00_core.sk`
-
-It should include:
-- common options
-- message formatter function
-- item ID encode/decode helpers
-- location key helpers
-- permission helper wrappers
-
-Then implement `st_01_items.sk` and `st_02_recipes.sk` before any machine logic.
-
----
-
-## 17) Current Status
-
-As of 2026-03-07, Milestones 1 through 10 are implemented in the script set:
-
-- Core framework, item registry, recipe registry
-- Command-driven GUI/menu flow
-- Basic and advanced machines (including assembler queue/pattern behavior)
-- Fuel/heat mechanics
-- Logistics linking and filtering
-- World interaction modifiers and chunk-safe processing
-- Admin/debug controls and audit log system
-- Snapshot-based persistence, migration checkpoints, and recovery tooling
-- Recipe lookup caching and periodic cleanup tasks
-- Optional economy hooks for machine-start costs and item selling
-- Active-list machine scheduling with bucketed processing for idle sleep behavior
-- Priority-based multi-route logistics dispatch
-- Advanced refinery support and extended Tier 2/Tier 3 assembly chains
-- Multi-stage refinery chains with slurry-token staging and captured byproduct outputs
-- Fuel progression now includes `heat_briquette` and `thermal_cell`, plus optional linked-buffer auto-refuel for machines
-- Advanced machine set now includes an abstracted `electrolyzer` and `fabricator` with split outputs, quality bonuses, and longer Tier 3 production chains
-- Default balance tables for durations, upkeep, economy charges, sell values, and upgrade caps
-- Balance reporting through `/stbalance` and `/stadmin economy status`
-- Migration status now tracks applied schema steps and exposes a legacy-item normalization placeholder path through `/stitem normalize`
-- Command-driven machine/admin panels now cover machine slot guides, progress/fuel indicators, balance shortcuts, machine inspection, and debug action menus
-
-For live progress, see [FEATURES.md](FEATURES.md).
-
-## 18) Documentation Index
-
-- Project scope and architecture: [README.md](README.md)
-- Feature progress tracker: [FEATURES.md](FEATURES.md)
-- Command reference: [COMMANDS.md](COMMANDS.md)
-- Item index: [ITEMS.md](ITEMS.md)
-- Recipe index: [RECIPES.md](RECIPES.md)
-- Milestone changelog: [CHANGELOG.md](CHANGELOG.md)
-- Manual test plan: [TESTPLAN.md](TESTPLAN.md)
-
+### First machine
+- `Press`
+	- Crafted from `Iron Plates`, `Iron Frames`, `Iron Shafts`, and a `Piston`.
+	- Placeable machine based on the vanilla piston block.
+	- Can have a `Hand Crank` attached to store up to 32 power.
+	- When supplied with enough stored power, it processes dropped items in front of the machine.
+	- `Iron / Gold / Copper Ingots` become `2x Plates`.
+	- `Raw Iron / Raw Gold / Raw Copper` become `4x Crushed Ore`.

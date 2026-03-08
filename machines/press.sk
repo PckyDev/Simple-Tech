@@ -1,0 +1,177 @@
+function stPress() :: item:
+	set {_item} to piston named "&6Press"
+	set lore of {_item} to "&7Uses power to compress materials." and "&7Drop items in front, then power up to press." and "&8Tier 1 • Mechanical Tech" and "&0st:press"
+	return {_item}
+
+function stIsPress(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not piston:
+		return false
+	return stHasId({_i}, "st:press")
+
+function stIsPressRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 1 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stHasId(slot 2 of {_inv}, "st:iron_shaft") is false:
+		return false
+	if slot 3 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 3 of {_inv}, "st:iron_plate") is false:
+		return false
+	if slot 4 of {_inv} is not iron bars:
+		return false
+	if stHasId(slot 4 of {_inv}, "st:iron_frame") is false:
+		return false
+	if slot 5 of {_inv} is not piston:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:press") is true:
+		return false
+	if slot 6 of {_inv} is not iron bars:
+		return false
+	if stHasId(slot 6 of {_inv}, "st:iron_frame") is false:
+		return false
+	if slot 7 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 7 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stHasId(slot 8 of {_inv}, "st:iron_shaft") is false:
+		return false
+	if slot 9 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 9 of {_inv}, "st:iron_plate") is false:
+		return false
+	return true
+
+function stConsumePressRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 1)
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 3)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 7)
+	stConsumeSlot({_inv}, 8)
+	stConsumeSlot({_inv}, 9)
+
+function stPressId(b: block) :: text:
+	set {_loc} to location of {_b}
+	return "%world of {_loc}%:%x-coordinate of {_loc}%:%y-coordinate of {_loc}%:%z-coordinate of {_loc}%"
+
+function stIsPlacedPress(b: block) :: boolean:
+	if {_b} is not set:
+		return false
+	if {st.press.block::%stPressId({_b})%} is set:
+		return true
+	return false
+
+function stPressFrontBlock(b: block) :: block:
+	set {_loc} to location of {_b}
+	set {_facing} to "%facing of {_b}%"
+	if {_facing} contains "north":
+		remove 1 from z-coordinate of {_loc}
+	else if {_facing} contains "south":
+		add 1 to z-coordinate of {_loc}
+	else if {_facing} contains "west":
+		remove 1 from x-coordinate of {_loc}
+	else:
+		add 1 to x-coordinate of {_loc}
+	return block at {_loc}
+
+function stPressingResult(i: item) :: item:
+	set {_result} to stPrimitiveProcessingResult({_i})
+	if {_result} is not set:
+		stop
+	set amount of {_result} to amount of {_result} * 2
+	return {_result}
+
+function stTryRunPress(b: block) :: boolean:
+	if stIsPlacedPress({_b}) is false:
+		return false
+	set {_front} to stPressFrontBlock({_b})
+	set {_frontLoc} to location of {_front}
+	loop dropped items in radius 1 around {_frontLoc}:
+		set {_input} to item of loop-entity
+		set {_result} to stPressingResult({_input})
+		if {_result} is set:
+			if amount of {_input} <= 1:
+				kill loop-entity
+			else:
+				set amount of {_input} to amount of {_input} - 1
+				set item of loop-entity to {_input}
+			drop {_result} at {_frontLoc}
+			return true
+	return false
+
+function stClearPressData(b: block):
+	set {_id} to stPressId({_b})
+	delete {st.press.block::%{_id}%}
+	delete {st.press.power::%{_id}%}
+	delete {st.press.crank::%{_id}%}
+
+on place of piston:
+	if stIsPress(item) is false:
+		stop
+	set {st.press.block::%stPressId(event-block)%} to event-block
+	set {st.press.power::%stPressId(event-block)%} to 0
+
+on break of piston:
+	if stIsPlacedPress(event-block) is false:
+		stop
+	cancel drops
+	drop stPress() at location of event-block
+	if {st.press.crank::%stPressId(event-block)%} is true:
+		drop stHandCrank() at location of event-block
+	stClearPressData(event-block)
+
+on piston extend:
+	if stIsPlacedPress(event-block) is true:
+		cancel event
+
+on piston retract:
+	if stIsPlacedPress(event-block) is true:
+		cancel event
+
+on right click on piston:
+	if stIsPlacedPress(event-block) is false:
+		stop
+	cancel event
+	set {_id} to stPressId(event-block)
+	if stIsHandCrank(player's tool) is true:
+		if {st.press.crank::%{_id}%} is true:
+			send "&8[&6Simple Tech&8]&r &eThis press already has a hand crank attached." to player
+			stop
+		set {st.press.crank::%{_id}%} to true
+		set {_tool} to player's tool
+		set amount of {_tool} to amount of {_tool} - 1
+		if amount of {_tool} <= 0:
+			set player's tool to air
+		else:
+			set player's tool to {_tool}
+		send "&8[&6Simple Tech&8]&r &aHand crank attached to the press." to player
+		stop
+	if {st.press.crank::%{_id}%} is not true:
+		send "&8[&6Simple Tech&8]&r &eAttach a hand crank first." to player
+		stop
+	add 1 to {st.press.power::%{_id}%}
+	if {st.press.power::%{_id}%} > 32:
+		set {st.press.power::%{_id}%} to 32
+	if {st.press.power::%{_id}%} >= 4:
+		if stTryRunPress(event-block) is true:
+			remove 4 from {st.press.power::%{_id}%}
+			send "&8[&6Simple Tech&8]&r &aPress completed. Stored power: &e%{st.press.power::%{_id}%}%" to player
+			stop
+	send "&8[&6Simple Tech&8]&r &7Stored power: &e%{st.press.power::%{_id}%}%&7/4" to player
+
+every 5 ticks:
+	loop {st.press.block::*}:
+		if loop-value is set:
+			if loop-value is piston:
+				set {_id} to stPressId(loop-value)
+				if {st.press.power::%{_id}%} >= 4:
+					if stTryRunPress(loop-value) is true:
+						remove 4 from {st.press.power::%{_id}%}
+			else:
+				stClearPressData(loop-value)

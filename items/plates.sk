@@ -1,0 +1,25 @@
+function stIronPlate() :: item:
+	set {_item} to heavy weighted pressure plate named "&fIron Plate"
+	set lore of {_item} to "&7A flattened iron component." and "&8Tier 0 • Primitive Tech" and "&0st:iron_plate"
+	return {_item}
+
+function stGoldPlate() :: item:
+	set {_item} to light weighted pressure plate named "&6Gold Plate"
+	set lore of {_item} to "&7A flattened gold component." and "&8Tier 0 • Primitive Tech" and "&0st:gold_plate"
+	return {_item}
+
+function stCopperPlate() :: item:
+	set {_item} to acacia pressure plate named "&6Copper Plate"
+	set lore of {_item} to "&7A flattened copper component." and "&8Tier 0 • Primitive Tech" and "&0st:copper_plate"
+	return {_item}
+
+function stPlateResult(i: item) :: item:
+	if {_i} is iron ingot:
+		return stIronPlate()
+	if {_i} is gold ingot:
+		return stGoldPlate()
+	if {_i} is copper ingot:
+		return stCopperPlate()
+
+function stIsPlate(i: item) :: boolean:
+	return stHasAnyId({_i}, "st:iron_plate", "st:gold_plate", "st:copper_plate")

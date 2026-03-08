@@ -1,0 +1,38 @@
+function stHandCrank() :: item:
+	set {_item} to lever named "&6Hand Crank"
+	set lore of {_item} to "&7Attach to a machine to power it manually." and "&8Tier 0 • Primitive Tech" and "&0st:hand_crank"
+	return {_item}
+
+function stIsHandCrank(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not lever:
+		return false
+	return stHasId({_i}, "st:hand_crank")
+
+function stIsHandCrankRecipe(inv: inventory) :: boolean:
+	if stSlotIsEmpty({_inv}, 1) is false:
+		return false
+	if slot 2 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 2 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 3) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 4) is false:
+		return false
+	if slot 5 of {_inv} is not stick:
+		return false
+	if stSlotIsEmpty({_inv}, 6) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 8) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stConsumeHandCrankRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 5)

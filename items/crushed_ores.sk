@@ -1,0 +1,276 @@
+function stCrushedIron() :: item:
+	set {_item} to 2 iron nugget named "&fCrushed Iron"
+	set lore of {_item} to "&7Ready for further processing." and "&8Tier 0 • Primitive Tech" and "&0st:crushed_iron"
+	return {_item}
+
+function stCrushedGold() :: item:
+	set {_item} to 2 gold nugget named "&6Crushed Gold"
+	set lore of {_item} to "&7Ready for further processing." and "&8Tier 0 • Primitive Tech" and "&0st:crushed_gold"
+	return {_item}
+
+function stCrushedCopper() :: item:
+	set {_item} to 2 copper nugget named "&6Crushed Copper"
+	set lore of {_item} to "&7Ready for further processing." and "&8Tier 0 • Primitive Tech" and "&0st:crushed_copper"
+	return {_item}
+
+function stCrushingResult(i: item) :: item:
+	if {_i} is raw iron:
+		return stCrushedIron()
+	if {_i} is raw gold:
+		return stCrushedGold()
+	if {_i} is raw copper:
+		return stCrushedCopper()
+
+function stIsCrushedOre(i: item) :: boolean:
+	return stHasAnyId({_i}, "st:crushed_iron", "st:crushed_gold", "st:crushed_copper")
+
+function stPrimitiveProcessingResult(i: item) :: item:
+	set {_result} to stCrushingResult({_i})
+	if {_result} is set:
+		return {_result}
+	set {_result} to stPlateResult({_i})
+	if {_result} is set:
+		return {_result}
+
+function stIsPrimitiveProcessingResult(i: item) :: boolean:
+	if stIsCrushedOre({_i}) is true:
+		return true
+	if stIsPlate({_i}) is true:
+		return true
+	return false
+
+function stConsumeCrushingInput(inv: inventory, slotNumber: number):
+	set {_item} to slot {_slotNumber} of {_inv}
+	if {_item} is air:
+		stop
+	set amount of {_item} to amount of {_item} - 1
+	if amount of {_item} <= 0:
+		set slot {_slotNumber} of {_inv} to air
+	else:
+		set slot {_slotNumber} of {_inv} to {_item}
+
+function stUpdateProcessingResult(inv: inventory):
+	set {_left} to slot 0 of {_inv}
+	set {_right} to slot 1 of {_inv}
+	set {_result} to air
+
+	if stIsHammer({_left}) is true:
+		set {_result} to stPrimitiveProcessingResult({_right})
+	else:
+		if stIsHammer({_right}) is true:
+			set {_result} to stPrimitiveProcessingResult({_left})
+
+	if {_result} is set:
+		set slot 2 of {_inv} to {_result}
+		stop
+
+	if stIsPrimitiveProcessingResult(slot 2 of {_inv}) is true:
+		set slot 2 of {_inv} to air
+
+function stSmeltingResult(i: item) :: item:
+	if stHasId({_i}, "st:crushed_iron") is true:
+		return iron ingot
+	if stHasId({_i}, "st:crushed_gold") is true:
+		return gold ingot
+	if stHasId({_i}, "st:crushed_copper") is true:
+		return copper ingot
+
+function stCanAcceptSmeltingResult(inv: inventory, result: item) :: boolean:
+	set {_output} to slot 2 of {_inv}
+	if {_output} is air:
+		return true
+	if type of {_output} is type of {_result}:
+		if amount of {_output} < 64:
+			return true
+	return false
+
+function stCustomFurnaceId(b: block) :: text:
+	set {_loc} to location of {_b}
+	return "%world of {_loc}%:%x-coordinate of {_loc}%:%y-coordinate of {_loc}%:%z-coordinate of {_loc}%"
+
+function stCustomFurnaceBlock(inv: inventory) :: block:
+	set {_holder} to holder of {_inv}
+	if {_holder} is not set:
+		stop
+	return block at location of {_holder}
+
+function stStopCustomFurnace(b: block):
+	set {_id} to stCustomFurnaceId({_b})
+	delete {st.customsmelt.progress::%{_id}%}
+	delete {st.customsmelt.burn::%{_id}%}
+	delete {st.customsmelt.active::%{_id}%}
+
+function stRefreshCustomFurnace(inv: inventory):
+	set {_block} to stCustomFurnaceBlock({_inv})
+	if {_block} is not set:
+		stop
+	set {_input} to slot 0 of {_inv}
+	set {_fuel} to slot 1 of {_inv}
+	set {_result} to stSmeltingResult({_input})
+	if {_result} is set:
+		if {_fuel} is fuel:
+			if stCanAcceptSmeltingResult({_inv}, {_result}) is true:
+				set {st.customsmelt.active::%stCustomFurnaceId({_block})%} to {_block}
+				if {st.customsmelt.progress::%stCustomFurnaceId({_block})%} is not set:
+					set {st.customsmelt.progress::%stCustomFurnaceId({_block})%} to 0 ticks
+				if {st.customsmelt.burn::%stCustomFurnaceId({_block})%} is not set:
+					set {st.customsmelt.burn::%stCustomFurnaceId({_block})%} to 0 ticks
+				stop
+	stStopCustomFurnace({_block})
+
+function stConsumeSmeltingFuel(inv: inventory, slotNumber: number):
+	set {_item} to slot {_slotNumber} of {_inv}
+	if {_item} is air:
+		stop
+	if type of {_item} is lava bucket:
+		set slot {_slotNumber} of {_inv} to bucket
+		stop
+	set amount of {_item} to amount of {_item} - 1
+	if amount of {_item} <= 0:
+		set slot {_slotNumber} of {_inv} to air
+	else:
+		set slot {_slotNumber} of {_inv} to {_item}
+
+function stFuelBurnTime(i: item) :: timespan:
+	if {_i} is lava bucket:
+		return 17600 ticks
+	if {_i} is coal block:
+		return 14080 ticks
+	if {_i} is blaze rod:
+		return 2112 ticks
+	if {_i} is coal:
+		return 1408 ticks
+	if {_i} is charcoal:
+		return 1408 ticks
+	if {_i} is dried kelp block:
+		return 3520 ticks
+	if {_i} is stick:
+		return 88 ticks
+	if {_i} is bamboo:
+		return 55 ticks
+	if {_i} is scaffolding:
+		return 55 ticks
+	if {_i} is bowl:
+		return 88 ticks
+	return 220 ticks
+
+function stTickCustomFurnace(b: block):
+	set {_id} to stCustomFurnaceId({_b})
+	set {_inv} to inventory of {_b}
+	set {_input} to slot 0 of {_inv}
+	set {_fuel} to slot 1 of {_inv}
+	set {_result} to stSmeltingResult({_input})
+
+	if {_result} is not set:
+		stStopCustomFurnace({_b})
+		stop
+
+	if {_fuel} is not fuel:
+		set the cooking time of {_b} to 0 ticks
+		set the fuel burning time of {_b} to 0 ticks
+		set {st.customsmelt.progress::%{_id}%} to 0 ticks
+		set {st.customsmelt.burn::%{_id}%} to 0 ticks
+		stop
+
+	if stCanAcceptSmeltingResult({_inv}, {_result}) is false:
+		set the cooking time of {_b} to 0 ticks
+		stop
+
+	if {st.customsmelt.progress::%{_id}%} is not set:
+		set {st.customsmelt.progress::%{_id}%} to 0 ticks
+	if {st.customsmelt.burn::%{_id}%} is not set:
+		set {st.customsmelt.burn::%{_id}%} to 0 ticks
+
+	if {st.customsmelt.burn::%{_id}%} <= 0 ticks:
+		set {_burnTime} to stFuelBurnTime({_fuel})
+		if {_burnTime} is not set:
+			set the cooking time of {_b} to 0 ticks
+			set the fuel burning time of {_b} to 0 ticks
+			stop
+		stConsumeSmeltingFuel({_inv}, 1)
+		set {st.customsmelt.burn::%{_id}%} to {_burnTime}
+
+	remove 1 tick from {st.customsmelt.burn::%{_id}%}
+	add 1 tick to {st.customsmelt.progress::%{_id}%}
+
+	set the total cooking time of {_b} to 220 ticks
+	set the cooking time of {_b} to {st.customsmelt.progress::%{_id}%}
+	set the fuel burning time of {_b} to {st.customsmelt.burn::%{_id}%}
+
+	if {st.customsmelt.progress::%{_id}%} < 220 ticks:
+		stop
+
+	set {st.customsmelt.progress::%{_id}%} to 0 ticks
+	stConsumeCrushingInput({_inv}, 0)
+
+	set {_output} to slot 2 of {_inv}
+	if {_output} is air:
+		set slot 2 of {_inv} to {_result}
+	else:
+		set amount of {_output} to amount of {_output} + 1
+		set slot 2 of {_inv} to {_output}
+
+	stRefreshCustomFurnace({_inv})
+
+on inventory click:
+	if type of event-inventory is not anvil inventory:
+		stop
+	if raw index of clicked slot is 2:
+		if stIsPrimitiveProcessingResult(slot 2 of event-inventory) is false:
+			stop
+
+		set {_left} to slot 0 of event-inventory
+		set {_right} to slot 1 of event-inventory
+		set {_hammerSlot} to -1
+		set {_inputSlot} to -1
+		set {_result} to slot 2 of event-inventory
+
+		if stIsHammer({_left}) is true:
+			if stPrimitiveProcessingResult({_right}) is set:
+				set {_hammerSlot} to 0
+				set {_inputSlot} to 1
+		else:
+			if stIsHammer({_right}) is true:
+				if stPrimitiveProcessingResult({_left}) is set:
+					set {_hammerSlot} to 1
+					set {_inputSlot} to 0
+
+		if {_hammerSlot} is -1:
+			stop
+
+		cancel event
+		stConsumeCrushingInput(event-inventory, {_inputSlot})
+		give {_result} to player
+		wait 1 tick
+		stUpdateProcessingResult(event-inventory)
+		stop
+
+	wait 1 tick
+	stUpdateProcessingResult(event-inventory)
+
+on inventory drag:
+	if type of event-inventory is anvil inventory:
+		wait 1 tick
+		stUpdateProcessingResult(event-inventory)
+	if type of event-inventory is furnace inventory:
+		wait 1 tick
+		stRefreshCustomFurnace(event-inventory)
+
+on inventory click:
+	if type of event-inventory is furnace inventory:
+		wait 1 tick
+		stRefreshCustomFurnace(event-inventory)
+
+on inventory open:
+	if type of event-inventory is furnace inventory:
+		wait 1 tick
+		stRefreshCustomFurnace(event-inventory)
+
+on inventory close:
+	if type of event-inventory is furnace inventory:
+		stRefreshCustomFurnace(event-inventory)
+
+every 1 tick:
+	loop {st.customsmelt.active::*}:
+		if loop-value is set:
+			stTickCustomFurnace(loop-value)

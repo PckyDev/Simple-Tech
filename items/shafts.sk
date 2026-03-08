@@ -1,0 +1,78 @@
+function stIronShaft() :: item:
+	set {_item} to "minecraft:chain" parsed as item
+	set {_item} to {_item} named "&fIron Shaft"
+	set lore of {_item} to "&7Transfers force through a machine." and "&8Tier 0 • Primitive Tech" and "&0st:iron_shaft"
+	return {_item}
+
+function stCopperShaft() :: item:
+	set {_item} to "minecraft:copper_chain" parsed as item
+	set {_item} to {_item} named "&6Copper Shaft"
+	set lore of {_item} to "&7Transfers force through a machine." and "&8Tier 0 • Primitive Tech" and "&0st:copper_shaft"
+	return {_item}
+
+function stIsShaft(i: item) :: boolean:
+	return stHasAnyId({_i}, "st:iron_shaft", "st:copper_shaft", "st:none")
+
+function stIsIronShaftRecipe(inv: inventory) :: boolean:
+	if stSlotIsEmpty({_inv}, 1) is false:
+		return false
+	if slot 2 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 2 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 3) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 4) is false:
+		return false
+	if slot 5 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 6) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if slot 8 of {_inv} is not heavy weighted pressure plate:
+		return false
+	if stHasId(slot 8 of {_inv}, "st:iron_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stIsCopperShaftRecipe(inv: inventory) :: boolean:
+	if stSlotIsEmpty({_inv}, 1) is false:
+		return false
+	if slot 2 of {_inv} is not acacia pressure plate:
+		return false
+	if stHasId(slot 2 of {_inv}, "st:copper_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 3) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 4) is false:
+		return false
+	if slot 5 of {_inv} is not acacia pressure plate:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:copper_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 6) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if slot 8 of {_inv} is not acacia pressure plate:
+		return false
+	if stHasId(slot 8 of {_inv}, "st:copper_plate") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stConsumeIronShaftRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 8)
+
+function stConsumeCopperShaftRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 8)

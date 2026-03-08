@@ -1,0 +1,41 @@
+function stHasMarker(i: item, marker: text) :: boolean:
+	if {_i} is not set:
+		return false
+	set {_lore::*} to lore of {_i}
+	if size of {_lore::*} is 0:
+		return false
+	loop {_lore::*}:
+		if uncolored loop-value is {_marker}:
+			return true
+	return false
+
+function stGetId(i: item) :: text:
+	if {_i} is not set:
+		stop
+	set {_lore::*} to lore of {_i}
+	if size of {_lore::*} is 0:
+		stop
+	loop {_lore::*}:
+		set {_line} to uncolored loop-value
+		if {_line} starts with "st:":
+			return {_line}
+
+function stHasId(i: item, id: text) :: boolean:
+	set {_itemId} to stGetId({_i})
+	if {_itemId} is not set:
+		return false
+	if {_itemId} is {_id}:
+		return true
+	return false
+
+function stHasAnyId(i: item, id1: text, id2: text, id3: text) :: boolean:
+	set {_itemId} to stGetId({_i})
+	if {_itemId} is not set:
+		return false
+	if {_itemId} is {_id1}:
+		return true
+	if {_itemId} is {_id2}:
+		return true
+	if {_itemId} is {_id3}:
+		return true
+	return false
