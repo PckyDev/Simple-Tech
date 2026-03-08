@@ -19,6 +19,11 @@
 4. Right-click the Press to add power.
 5. When enough power is stored, the Press will process one input.
 
+## Automation
+- The Press can also receive power from a [Water Wheel](water-wheel.md) through a [Cable](../items/cable.md).
+- Automatic power is transferred in small increments over time instead of by manual clicks.
+- Only one Cable can be connected to a Press at once.
+
 ## Power
 - Stores up to `32` power.
 - Uses `4` power per completed press.
@@ -38,3 +43,4 @@
 - The Press doubles the manual Hammer output for supported recipes.
 - It currently processes dropped items directly in front of the machine.
 - Breaking the Press returns the Press item, and also returns the attached Hand Crank if one is installed.
+- If the Press is connected by Cable, breaking it also returns the Cable.

@@ -105,6 +105,8 @@ function stMachineInfoBlock(b: block) :: block:
 		set {_press} to stPressFromCrankBlock({_b})
 		if stIsPlacedPress({_press}) is true:
 			return {_press}
+	if stIsWaterWheelPart({_b}) is true:
+		return stWaterWheelMachineAnchorBlock({_b})
 
 function stPressHasProcessableInput(b: block) :: boolean:
 	set {_front} to stPressFrontBlock({_b})
@@ -134,6 +136,8 @@ function stPressStatusText(b: block) :: text:
 function stMachineInfoTitle(b: block) :: text:
 	if stIsPlacedPress({_b}) is true:
 		return "&6&lPress"
+	if stIsWaterWheelPart({_b}) is true:
+		return "&6&lWater Wheel"
 
 function stMachineInfoSubtitle(b: block) :: text:
 	if stIsPlacedPress({_b}) is true:
@@ -143,7 +147,16 @@ function stMachineInfoSubtitle(b: block) :: text:
 			set {_stored} to 0
 		set {_required} to stPressRequiredPower({_b})
 		set {_status} to stPressStatusText({_b})
-		return "&e%{_stored}%&7/&e%{_required}% ⚡%nl%%{_status}%"
+		set {_cable} to "&7No cable"
+		if stMachineHasCable({_b}) is true:
+			set {_cable} to "&aCable linked"
+		return "&e%{_stored}%&7/&e%{_required}% ⚡%nl%%{_status}%%nl%%{_cable}%"
+	if stIsWaterWheelPart({_b}) is true:
+		set {_status} to stWaterWheelStatusText({_b})
+		set {_cable} to "&7No cable"
+		if stMachineHasCable({_b}) is true:
+			set {_cable} to "&aCable linked"
+		return "&7Automatic power source%nl%%{_status}%%nl%%{_cable}%"
 
 every 2 ticks:
 	loop all players:

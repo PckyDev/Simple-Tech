@@ -17,5 +17,6 @@ Simple Tech items currently available:
 - [Copper Frame](copper-frame.md)
 - [Iron Shaft](iron-shaft.md)
 - [Copper Shaft](copper-shaft.md)
+- [Cable](cable.md)
 
 Use the machine pages for placeable blocks and processing systems.

@@ -298,19 +298,12 @@ function stTryRunPress(b: block) :: boolean:
 			return true
 	return false
 
-function stChargePress(b: block, p: player) :: boolean:
+function stAddPressPower(b: block, amount: number) :: boolean:
 	set {_id} to stPressId({_b})
 	set {_required} to stPressRequiredPower({_b})
-	set {_effectLoc} to stCenteredBlockEffectLocation({_b})
-	if stPressCrankBlock({_b}) is set:
-		set {_effectLoc} to stCenteredBlockEffectLocation(stPressCrankBlock({_b}))
-	stPlayHandCrankEffects({_effectLoc})
 	if {st.press.power::%{_id}%} is not set:
 		set {st.press.power::%{_id}%} to 0
-	if {st.press.power::%{_id}%} < {_required}:
-		add 1 to {st.press.power::%{_id}%}
-		if {_p} is set:
-			stShowMachineDeltaHologram({_b}, "&a+1 ⚡", {_p})
+	add {_amount} to {st.press.power::%{_id}%}
 	if {st.press.power::%{_id}%} > {_required}:
 		set {st.press.power::%{_id}%} to {_required}
 	if {st.press.power::%{_id}%} >= {_required}:
@@ -319,13 +312,22 @@ function stChargePress(b: block, p: player) :: boolean:
 			stStartPressAnimation({_b})
 			set {st.press.power::%{_id}%} to 0
 			return true
-		return false
 	return false
+
+function stChargePress(b: block, p: player) :: boolean:
+	set {_effectLoc} to stCenteredBlockEffectLocation({_b})
+	if stPressCrankBlock({_b}) is set:
+		set {_effectLoc} to stCenteredBlockEffectLocation(stPressCrankBlock({_b}))
+	stPlayHandCrankEffects({_effectLoc})
+	if {_p} is set:
+		stShowMachineDeltaHologram({_b}, "&a+1 ⚡", {_p})
+	return stAddPressPower({_b}, 1)
 
 function stClearPressData(b: block):
 	set {_id} to stPressId({_b})
 	if {st.press.animating::%{_id}%} is set:
 		stStopPressAnimation({_b})
+	stDisconnectMachinePower({_b}, true)
 	delete {st.press.block::%{_id}%}
 	delete {st.press.power::%{_id}%}
 	delete {st.press.crank::%{_id}%}
@@ -371,6 +373,8 @@ on piston retract:
 
 on right click on piston:
 	if stIsPlacedPress(event-block) is false:
+		stop
+	if stIsCable(player's tool) is true:
 		stop
 	cancel event
 	set {_id} to stPressId(event-block)

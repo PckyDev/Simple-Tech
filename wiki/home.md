@@ -38,12 +38,14 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 - [Copper Frame](items/copper-frame.md)
 - [Iron Shaft](items/iron-shaft.md)
 - [Copper Shaft](items/copper-shaft.md)
+- [Cable](items/cable.md)
 
 ---
 
 ## Machines
 
 - [Press](machines/press.md)
+- [Water Wheel](machines/water-wheel.md)
 
 ---
 
@@ -54,3 +56,5 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 3. Craft a [Hand Crank](items/hand-crank.md), [Iron Frame](items/iron-frame.md), and [Iron Shaft](items/iron-shaft.md)
 4. Craft a [Press](machines/press.md)
 5. Use the Press for better ore crushing and plate production
+6. Craft a [Water Wheel](machines/water-wheel.md) for automatic power generation
+7. Craft a [Cable](items/cable.md) to connect the Water Wheel to a [Press](machines/press.md)

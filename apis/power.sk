@@ -1,0 +1,310 @@
+function stPowerMachineBlockKey(b: block) :: text:
+	set {_loc} to location of {_b}
+	return "%world of {_loc}%:%x-coordinate of {_loc}%:%y-coordinate of {_loc}%:%z-coordinate of {_loc}%"
+
+function stPowerMachineBlock(b: block) :: block:
+	if stIsPlacedPress({_b}) is true:
+		return {_b}
+	if {_b} is lever:
+		set {_press} to stPressFromCrankBlock({_b})
+		if stIsPlacedPress({_press}) is true:
+			return {_press}
+	if stIsWaterWheelPart({_b}) is true:
+		return stWaterWheelMachineAnchorBlock({_b})
+
+function stPowerMachineId(b: block) :: text:
+	if stIsPlacedPress({_b}) is true:
+		return "press:%stPressId({_b})%"
+	if stIsWaterWheelPart({_b}) is true:
+		set {_support} to stWaterWheelSupportBlockFromPart({_b})
+		if {_support} is set:
+			return "waterwheel:%stPowerMachineBlockKey({_support})%"
+
+function stMachineCanOutputPower(b: block) :: boolean:
+	if stIsWaterWheelPart({_b}) is true:
+		return true
+	return false
+
+function stMachineCanReceivePower(b: block) :: boolean:
+	if stIsPlacedPress({_b}) is true:
+		return true
+	return false
+
+function stWaterWheelProducesPower(b: block) :: boolean:
+	if stIsWaterWheelPart({_b}) is false:
+		return false
+	set {_support} to stWaterWheelSupportBlockFromPart({_b})
+	if {_support} is not set:
+		return false
+	set {_side} to {st.waterwheel.machine::%stPowerMachineBlockKey({_support})%::side}
+	if {_side} is not set:
+		return false
+	set {_water} to stOffsetSideBlock({_support}, {_side}, 1)
+	if {_water} is water:
+		return true
+	return false
+
+function stMachineOutputRate(b: block) :: number:
+	if stIsWaterWheelPart({_b}) is true:
+		if stWaterWheelProducesPower({_b}) is true:
+			return 1
+	return 0
+
+function stMachineAcceptPower(b: block, amount: number) :: boolean:
+	if stIsPlacedPress({_b}) is true:
+		return stAddPressPower({_b}, {_amount})
+	return false
+
+function stMachineCableAnchorLocation(b: block) :: location:
+	set {_loc} to location of {_b}
+	add 0.25 to y-coordinate of {_loc}
+	return {_loc}
+
+function stSpawnCableAnchor(loc: location) :: entity:
+	spawn a rabbit at {_loc}
+	make last spawned entity invisible
+	make last spawned entity silent
+	make last spawned entity invulnerable
+	set gravity of last spawned entity to false
+	set artificial intelligence of last spawned entity to false
+	set {_rabbit} to last spawned entity
+	return {_rabbit}
+
+function stCreatePowerLinkVisual(id: text):
+	set {_from} to {st.power.link::%{_id}%::from}
+	set {_to} to {st.power.link::%{_id}%::to}
+	if {_from} is not set:
+		stop
+	if {_to} is not set:
+		stop
+	set {_anchor1} to {st.power.link::%{_id}%::anchor1}
+	set {_anchor2} to {st.power.link::%{_id}%::anchor2}
+	if {_anchor1} is set:
+		kill {_anchor1}
+	if {_anchor2} is set:
+		kill {_anchor2}
+	set {_anchor1} to stSpawnCableAnchor(stMachineCableAnchorLocation({_from}))
+	set {_anchor2} to stSpawnCableAnchor(stMachineCableAnchorLocation({_to}))
+	set {st.power.link::%{_id}%::anchor1} to {_anchor1}
+	set {st.power.link::%{_id}%::anchor2} to {_anchor2}
+	set {st.power.anchor::%uuid of {_anchor1}%} to {_id}
+	set {st.power.anchor::%uuid of {_anchor2}%} to {_id}
+	leash {_anchor1} to {_anchor2}
+
+function stClearPowerLinkVisual(id: text):
+	set {_anchor1} to {st.power.link::%{_id}%::anchor1}
+	set {_anchor2} to {st.power.link::%{_id}%::anchor2}
+	if {_anchor1} is set:
+		stQueuePowerLeadCleanup(location of {_anchor1})
+		set {st.power.anchor.removing::%uuid of {_anchor1}%} to true
+		kill {_anchor1}
+		delete {st.power.anchor::%uuid of {_anchor1}%}
+	if {_anchor2} is set:
+		stQueuePowerLeadCleanup(location of {_anchor2})
+		set {st.power.anchor.removing::%uuid of {_anchor2}%} to true
+		kill {_anchor2}
+		delete {st.power.anchor::%uuid of {_anchor2}%}
+	delete {st.power.link::%{_id}%::anchor1}
+	delete {st.power.link::%{_id}%::anchor2}
+
+function stQueuePowerLeadCleanup(loc: location):
+	add 1 to {st.power.cleanup.next}
+	set {_id} to {st.power.cleanup.next}
+	set {st.power.cleanup.ids::*} to {st.power.cleanup.ids::*} and {_id}
+	set {st.power.cleanup::%{_id}%::loc} to {_loc}
+	set {st.power.cleanup::%{_id}%::ticks} to 8
+
+function stDisconnectPowerLink(id: text, dropCable: boolean, dropLoc: location):
+	set {_fromId} to {st.power.link::%{_id}%::fromid}
+	set {_toId} to {st.power.link::%{_id}%::toid}
+	set {_from} to {st.power.link::%{_id}%::from}
+	set {_to} to {st.power.link::%{_id}%::to}
+	stClearPowerLinkVisual({_id})
+	remove {_id} from {st.power.links::*}
+	if {_fromId} is set:
+		delete {st.power.machinelink::%{_fromId}%}
+	if {_toId} is set:
+		delete {st.power.machinelink::%{_toId}%}
+	delete {st.power.link::%{_id}%::*}
+	if {_dropCable} is true:
+		drop stCable() at {_dropLoc}
+	stQueuePowerLeadCleanup({_dropLoc})
+	if {_from} is set:
+		stQueuePowerLeadCleanup(location of {_from})
+	if {_to} is set:
+		stQueuePowerLeadCleanup(location of {_to})
+
+function stDisconnectMachinePower(b: block, dropCable: boolean):
+	set {_machineId} to stPowerMachineId({_b})
+	if {_machineId} is not set:
+		stop
+	set {_linkId} to {st.power.machinelink::%{_machineId}%}
+	if {_linkId} is not set:
+		stop
+	set {_dropLoc} to location of {_b}
+	stDisconnectPowerLink({_linkId}, {_dropCable}, {_dropLoc})
+
+function stPowerLinkId(from: block, to: block) :: text:
+	return "%stPowerMachineId({_from})%->%stPowerMachineId({_to})%"
+
+function stMachineHasCable(b: block) :: boolean:
+	set {_machineId} to stPowerMachineId({_b})
+	if {_machineId} is not set:
+		return false
+	if {st.power.machinelink::%{_machineId}%} is set:
+		return true
+	return false
+
+function stCreatePowerLink(from: block, to: block):
+	set {_fromId} to stPowerMachineId({_from})
+	set {_toId} to stPowerMachineId({_to})
+	set {_linkId} to stPowerLinkId({_from}, {_to})
+	add {_linkId} to {st.power.links::*}
+	set {st.power.link::%{_linkId}%::from} to {_from}
+	set {st.power.link::%{_linkId}%::to} to {_to}
+	set {st.power.link::%{_linkId}%::fromid} to {_fromId}
+	set {st.power.link::%{_linkId}%::toid} to {_toId}
+	set {st.power.machinelink::%{_fromId}%} to {_linkId}
+	set {st.power.machinelink::%{_toId}%} to {_linkId}
+	stCreatePowerLinkVisual({_linkId})
+
+function stConsumeOneCableFromTool(p: player):
+	set {_tool} to {_p}'s tool
+	set amount of {_tool} to amount of {_tool} - 1
+	if amount of {_tool} <= 0:
+		set {_p}'s tool to air
+	else:
+		set {_p}'s tool to {_tool}
+
+on right click:
+	if event-block is not set:
+		stop
+	if stIsCable(player's tool) is false:
+		stop
+	set {_machine} to stPowerMachineBlock(event-block)
+	if {_machine} is not set:
+		stop
+	cancel event
+	set {_playerId} to "%uuid of player%"
+	set {_pending} to {st.power.pending::%{_playerId}%}
+	if {_pending} is not set:
+		set {st.power.pending::%{_playerId}%} to {_machine}
+		stShowMachineDeltaHologram({_machine}, "&eCable start", player)
+		stop
+	delete {st.power.pending::%{_playerId}%}
+	if stPowerMachineId({_pending}) = stPowerMachineId({_machine}):
+		stShowMachineDeltaHologram({_machine}, "&7Cancelled", player)
+		stop
+	set {_from} to {_pending}
+	set {_to} to {_machine}
+	if stMachineCanOutputPower({_from}) is false:
+		if stMachineCanOutputPower({_to}) is true:
+			set {_from} to {_machine}
+			set {_to} to {_pending}
+		else:
+			stShowMachineDeltaHologram({_machine}, "&cNo output", player)
+			stop
+	if stMachineCanReceivePower({_to}) is false:
+		if stMachineCanReceivePower({_from}) is true:
+			set {_swap} to {_from}
+			set {_from} to {_to}
+			set {_to} to {_swap}
+		else:
+			stShowMachineDeltaHologram({_machine}, "&cNo input", player)
+			stop
+	if stMachineCanOutputPower({_from}) is false:
+		stShowMachineDeltaHologram({_machine}, "&cInvalid", player)
+		stop
+	if stMachineCanReceivePower({_to}) is false:
+		stShowMachineDeltaHologram({_machine}, "&cInvalid", player)
+		stop
+	if stMachineHasCable({_from}) is true:
+		stShowMachineDeltaHologram({_from}, "&cBusy", player)
+		stop
+	if stMachineHasCable({_to}) is true:
+		stShowMachineDeltaHologram({_to}, "&cBusy", player)
+		stop
+	if distance between location of {_from} and location of {_to} > 10:
+		stShowMachineDeltaHologram({_machine}, "&cToo far", player)
+		stop
+	stCreatePowerLink({_from}, {_to})
+	stConsumeOneCableFromTool(player)
+	stShowMachineDeltaHologram({_to}, "&aConnected", player)
+
+on unleash of rabbit:
+	if {st.power.anchor::%uuid of event-entity%} is set:
+		prevent the leash from dropping
+		stop
+	if {st.power.anchor.removing::%uuid of event-entity%} is set:
+		prevent the leash from dropping
+
+on death of rabbit:
+	if {st.power.anchor::%uuid of victim%} is set:
+		clear drops
+		delete {st.power.anchor::%uuid of victim%}
+		delete {st.power.anchor.removing::%uuid of victim%}
+		stop
+	if {st.power.anchor.removing::%uuid of victim%} is set:
+		clear drops
+		delete {st.power.anchor.removing::%uuid of victim%}
+
+every 1 tick:
+	if {st.power.cleanup.ids::*} is not set:
+		stop
+	loop {st.power.cleanup.ids::*}:
+		set {_id} to loop-value
+		set {_loc} to {st.power.cleanup::%{_id}%::loc}
+		set {_ticks} to {st.power.cleanup::%{_id}%::ticks}
+		if {_loc} is not set:
+			remove {_id} from {st.power.cleanup.ids::*}
+			delete {st.power.cleanup::%{_id}%::*}
+		else:
+			loop dropped items in radius 6 around {_loc}:
+				set {_stack} to item of loop-entity
+				if type of {_stack} is lead:
+					if stIsCable({_stack}) is false:
+						kill loop-entity
+			subtract 1 from {_ticks}
+			if {_ticks} <= 0:
+				remove {_id} from {st.power.cleanup.ids::*}
+				delete {st.power.cleanup::%{_id}%::*}
+			else:
+				set {st.power.cleanup::%{_id}%::ticks} to {_ticks}
+
+every 10 ticks:
+	loop {st.power.links::*}:
+		set {_linkId} to loop-value
+		set {_from} to {st.power.link::%{_linkId}%::from}
+		set {_to} to {st.power.link::%{_linkId}%::to}
+		set {_anchor1} to {st.power.link::%{_linkId}%::anchor1}
+		set {_anchor2} to {st.power.link::%{_linkId}%::anchor2}
+		if {_from} is not set:
+			if {_to} is set:
+				stDisconnectPowerLink({_linkId}, true, location of {_to})
+			else if {_anchor1} is set:
+				stDisconnectPowerLink({_linkId}, false, location of {_anchor1})
+			else if {_anchor2} is set:
+				stDisconnectPowerLink({_linkId}, false, location of {_anchor2})
+			else:
+				set {_fromId} to {st.power.link::%{_linkId}%::fromid}
+				set {_toId} to {st.power.link::%{_linkId}%::toid}
+				stClearPowerLinkVisual({_linkId})
+				if {_fromId} is set:
+					delete {st.power.machinelink::%{_fromId}%}
+				if {_toId} is set:
+					delete {st.power.machinelink::%{_toId}%}
+				delete {st.power.link::%{_linkId}%::*}
+		else if {_to} is not set:
+			stDisconnectPowerLink({_linkId}, true, location of {_from})
+		else if stMachineCanOutputPower({_from}) is false:
+			stDisconnectPowerLink({_linkId}, true, location of {_from})
+		else if stMachineCanReceivePower({_to}) is false:
+			stDisconnectPowerLink({_linkId}, true, location of {_to})
+		else:
+			if {_anchor1} is not set:
+				stCreatePowerLinkVisual({_linkId})
+			else if {_anchor2} is not set:
+				stCreatePowerLinkVisual({_linkId})
+			set {_rate} to stMachineOutputRate({_from})
+			if {_rate} > 0:
+				stMachineAcceptPower({_to}, {_rate})

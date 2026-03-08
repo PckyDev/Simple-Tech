@@ -73,6 +73,10 @@ function stCustomCraftingResult(inv: inventory) :: item:
 		return stCopperShaft()
 	if stIsPressRecipe({_inv}) is true:
 		return stPress()
+	if stIsWaterWheelRecipe({_inv}) is true:
+		return stWaterWheel()
+	if stIsCableRecipe({_inv}) is true:
+		return stCable()
 
 function stConsumeCustomCraftingRecipe(inv: inventory):
 	if stIsHammerRecipe({_inv}) is true:
@@ -95,6 +99,12 @@ function stConsumeCustomCraftingRecipe(inv: inventory):
 		stop
 	if stIsPressRecipe({_inv}) is true:
 		stConsumePressRecipe({_inv})
+		stop
+	if stIsWaterWheelRecipe({_inv}) is true:
+		stConsumeWaterWheelRecipe({_inv})
+		stop
+	if stIsCableRecipe({_inv}) is true:
+		stConsumeCableRecipe({_inv})
 
 function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsHammer({_i}) is true:
@@ -106,6 +116,10 @@ function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsShaft({_i}) is true:
 		return true
 	if stIsPress({_i}) is true:
+		return true
+	if stIsWaterWheel({_i}) is true:
+		return true
+	if stIsCable({_i}) is true:
 		return true
 	return false
 

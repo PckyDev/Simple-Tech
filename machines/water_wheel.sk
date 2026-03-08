@@ -1,0 +1,265 @@
+function stBlockId(b: block) :: text:
+	set {_loc} to location of {_b}
+	return "%world of {_loc}%:%x-coordinate of {_loc}%:%y-coordinate of {_loc}%:%z-coordinate of {_loc}%"
+
+function stWaterWheel() :: item:
+	set {_item} to barrel named "&6Water Wheel"
+	set lore of {_item} to "&7Generates mechanical power from water." and "&7Place it above a shoreline next to water." and "&8Tier 1 • Mechanical Tech" and "&0st:water_wheel"
+	return {_item}
+
+function stIsWaterWheel(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not barrel:
+		return false
+	return stHasId({_i}, "st:water_wheel")
+
+function stIsWaterWheelRecipe(inv: inventory) :: boolean:
+	if stSlotIsEmpty({_inv}, 1) is false:
+		return false
+	if stHasId(slot 2 of {_inv}, "st:iron_shaft") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 3) is false:
+		return false
+	if slot 4 of {_inv} is not spruce stairs:
+		return false
+	if slot 5 of {_inv} is not barrel:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:water_wheel") is true:
+		return false
+	if slot 6 of {_inv} is not spruce trapdoor:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if stHasId(slot 8 of {_inv}, "st:iron_frame") is false:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stConsumeWaterWheelRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 8)
+
+function stHorizontalSideName(p: player) :: text:
+	set {_facing} to "%facing of {_p}%"
+	if {_facing} contains "north":
+		return "north"
+	if {_facing} contains "south":
+		return "south"
+	if {_facing} contains "west":
+		return "west"
+	return "east"
+
+function stOppositeHorizontal(side: text) :: text:
+	if {_side} is "north":
+		return "south"
+	if {_side} is "south":
+		return "north"
+	if {_side} is "west":
+		return "east"
+	return "west"
+
+function stOffsetSideBlock(b: block, side: text, distance: number) :: block:
+	set {_loc} to location of {_b}
+	if {_side} is "north":
+		remove {_distance} from z-coordinate of {_loc}
+	else if {_side} is "south":
+		add {_distance} to z-coordinate of {_loc}
+	else if {_side} is "west":
+		remove {_distance} from x-coordinate of {_loc}
+	else:
+		add {_distance} to x-coordinate of {_loc}
+	return block at {_loc}
+
+function stWaterWheelPartMachineId(b: block) :: text:
+	return {st.waterwheel.part::%stBlockId({_b})%}
+
+function stWaterWheelPartType(b: block) :: text:
+	return {st.waterwheel.parttype::%stBlockId({_b})%}
+
+function stIsWaterWheelPart(b: block) :: boolean:
+	if stWaterWheelPartMachineId({_b}) is set:
+		return true
+	return false
+
+function stWaterWheelMachineAnchorBlock(b: block) :: block:
+	set {_id} to stWaterWheelPartMachineId({_b})
+	if {_id} is set:
+		return {st.waterwheel.machine::%{_id}%::barrel}
+
+function stWaterWheelSupportBlockFromPart(b: block) :: block:
+	set {_id} to stWaterWheelPartMachineId({_b})
+	if {_id} is set:
+		return {st.waterwheel.machine::%{_id}%::support}
+
+function stWaterWheelPreferredSide(support: block, p: player) :: text:
+	set {_preferred} to stHorizontalSideName({_p})
+	set {_check} to stOffsetSideBlock({_support}, {_preferred}, 1)
+	if {_check} is water:
+		return {_preferred}
+	set {_check} to stOffsetSideBlock({_support}, "north", 1)
+	if {_check} is water:
+		return "north"
+	set {_check} to stOffsetSideBlock({_support}, "south", 1)
+	if {_check} is water:
+		return "south"
+	set {_check} to stOffsetSideBlock({_support}, "west", 1)
+	if {_check} is water:
+		return "west"
+	set {_check} to stOffsetSideBlock({_support}, "east", 1)
+	if {_check} is water:
+		return "east"
+
+function stCanPlaceWaterWheel(base: block, support: block, side: text) :: boolean:
+	if {_support} is air:
+		return false
+	set {_water} to stOffsetSideBlock({_support}, {_side}, 1)
+	set {_barrel} to stOffsetSideBlock({_base}, {_side}, 1)
+	set {_trapdoor} to stOffsetSideBlock({_base}, {_side}, 2)
+	if {_water} is not water:
+		return false
+	if {_barrel} is not air:
+		return false
+	if {_trapdoor} is not air:
+		return false
+	return true
+
+function stSetWaterWheelBlockData(stair: block, barrel: block, trapdoor: block, side: text):
+	if {_side} is "north":
+		set block data of {_stair} to spruce_stairs[facing=north;half=bottom;shape=straight]
+		set block data of {_barrel} to barrel[facing=north]
+		set block data of {_trapdoor} to spruce_trapdoor[facing=north;half=bottom;open=true]
+	else if {_side} is "south":
+		set block data of {_stair} to spruce_stairs[facing=south;half=bottom;shape=straight]
+		set block data of {_barrel} to barrel[facing=south]
+		set block data of {_trapdoor} to spruce_trapdoor[facing=south;half=bottom;open=true]
+	else if {_side} is "west":
+		set block data of {_stair} to spruce_stairs[facing=west;half=bottom;shape=straight]
+		set block data of {_barrel} to barrel[facing=west]
+		set block data of {_trapdoor} to spruce_trapdoor[facing=west;half=bottom;open=true]
+	else:
+		set block data of {_stair} to spruce_stairs[facing=east;half=bottom;shape=straight]
+		set block data of {_barrel} to barrel[facing=east]
+		set block data of {_trapdoor} to spruce_trapdoor[facing=east;half=bottom;open=true]
+
+function stRegisterWaterWheel(support: block, stair: block, barrel: block, trapdoor: block, side: text):
+	set {_id} to stBlockId({_support})
+	add {_id} to {st.waterwheel.ids::*}
+	set {st.waterwheel.machine::%{_id}%::support} to {_support}
+	set {st.waterwheel.machine::%{_id}%::stair} to {_stair}
+	set {st.waterwheel.machine::%{_id}%::barrel} to {_barrel}
+	set {st.waterwheel.machine::%{_id}%::trapdoor} to {_trapdoor}
+	set {st.waterwheel.machine::%{_id}%::side} to {_side}
+	set {st.waterwheel.part::%stBlockId({_support})%} to {_id}
+	set {st.waterwheel.part::%stBlockId({_stair})%} to {_id}
+	set {st.waterwheel.part::%stBlockId({_barrel})%} to {_id}
+	set {st.waterwheel.part::%stBlockId({_trapdoor})%} to {_id}
+	set {st.waterwheel.parttype::%stBlockId({_support})%} to "support"
+	set {st.waterwheel.parttype::%stBlockId({_stair})%} to "stair"
+	set {st.waterwheel.parttype::%stBlockId({_barrel})%} to "barrel"
+	set {st.waterwheel.parttype::%stBlockId({_trapdoor})%} to "trapdoor"
+
+function stClearWaterWheelData(id: text):
+	set {_support} to {st.waterwheel.machine::%{_id}%::support}
+	set {_stair} to {st.waterwheel.machine::%{_id}%::stair}
+	set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
+	set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
+	remove {_id} from {st.waterwheel.ids::*}
+	if {_barrel} is set:
+		stDisconnectMachinePower({_barrel}, true)
+	if {_support} is set:
+		delete {st.waterwheel.part::%stBlockId({_support})%}
+		delete {st.waterwheel.parttype::%stBlockId({_support})%}
+	if {_stair} is set:
+		delete {st.waterwheel.part::%stBlockId({_stair})%}
+		delete {st.waterwheel.parttype::%stBlockId({_stair})%}
+	if {_barrel} is set:
+		delete {st.waterwheel.part::%stBlockId({_barrel})%}
+		delete {st.waterwheel.parttype::%stBlockId({_barrel})%}
+	if {_trapdoor} is set:
+		delete {st.waterwheel.part::%stBlockId({_trapdoor})%}
+		delete {st.waterwheel.parttype::%stBlockId({_trapdoor})%}
+	delete {st.waterwheel.machine::%{_id}%::*}
+	delete {st.waterwheel.breaking::%{_id}%}
+
+function stBreakWaterWheel(id: text, dropLoc: location):
+	if {st.waterwheel.breaking::%{_id}%} is set:
+		stop
+	set {st.waterwheel.breaking::%{_id}%} to true
+	set {_stair} to {st.waterwheel.machine::%{_id}%::stair}
+	set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
+	set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
+	if {_stair} is set:
+		set block at location of {_stair} to air
+	if {_barrel} is set:
+		set block at location of {_barrel} to air
+	if {_trapdoor} is set:
+		set block at location of {_trapdoor} to air
+	drop stWaterWheel() at {_dropLoc}
+	stClearWaterWheelData({_id})
+
+function stWaterWheelStatusText(b: block) :: text:
+	set {_support} to stWaterWheelSupportBlockFromPart({_b})
+	if {_support} is not set:
+		return "&7Incomplete"
+	set {_side} to {st.waterwheel.machine::%stBlockId({_support})%::side}
+	if {_side} is not set:
+		return "&7Idle"
+	set {_water} to stOffsetSideBlock({_support}, {_side}, 1)
+	if {_water} is water:
+		if stMachineHasCable(stWaterWheelMachineAnchorBlock({_b})) is true:
+			return "&aGenerating"
+		return "&aWater linked"
+	return "&cNeeds water"
+
+on place of barrel:
+	if stIsWaterWheel(item) is false:
+		stop
+	set {_stair} to event-block
+	set {_support} to block below event-block
+	set {_side} to stWaterWheelPreferredSide({_support}, player)
+	if {_side} is not set:
+		cancel event
+		stop
+	if stCanPlaceWaterWheel({_stair}, {_support}, {_side}) is false:
+		cancel event
+		stop
+	set {_barrel} to stOffsetSideBlock({_stair}, {_side}, 1)
+	set {_trapdoor} to stOffsetSideBlock({_stair}, {_side}, 2)
+	stSetWaterWheelBlockData({_stair}, {_barrel}, {_trapdoor}, {_side})
+	stRegisterWaterWheel({_support}, {_stair}, {_barrel}, {_trapdoor}, {_side})
+
+on right click on barrel:
+	if stIsWaterWheelPart(event-block) is false:
+		stop
+	cancel event
+
+on break:
+	set {_id} to stWaterWheelPartMachineId(event-block)
+	if {_id} is not set:
+		stop
+	set {_partType} to stWaterWheelPartType(event-block)
+	if {_partType} is not "support":
+		cancel event
+		cancel drops
+	stBreakWaterWheel({_id}, location of event-block)
+
+every 10 ticks:
+	loop {st.waterwheel.ids::*}:
+		set {_id} to loop-value
+		set {_support} to {st.waterwheel.machine::%{_id}%::support}
+		set {_stair} to {st.waterwheel.machine::%{_id}%::stair}
+		set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
+		set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
+		if {_support} is not set:
+			stClearWaterWheelData({_id})
+		else if {_stair} is not spruce stairs:
+			stClearWaterWheelData({_id})
+		else if {_barrel} is not barrel:
+			stClearWaterWheelData({_id})
+		else if {_trapdoor} is not spruce trapdoor:
+			stClearWaterWheelData({_id})

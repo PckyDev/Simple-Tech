@@ -1,0 +1,39 @@
+function stCable() :: item:
+	set {_item} to lead named "&6Cable"
+	set lore of {_item} to "&7Connects machines together." and "&7Right click two machines to link them." and "&8Tier 1 • Mechanical Tech" and "&0st:cable"
+	return {_item}
+
+function stIsCable(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not lead:
+		return false
+	return stHasId({_i}, "st:cable")
+
+function stIsCableRecipe(inv: inventory) :: boolean:
+	if stSlotIsEmpty({_inv}, 1) is false:
+		return false
+	if slot 2 of {_inv} is not string:
+		return false
+	if stSlotIsEmpty({_inv}, 3) is false:
+		return false
+	if slot 4 of {_inv} is not string:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:iron_shaft") is false:
+		return false
+	if slot 6 of {_inv} is not string:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if slot 8 of {_inv} is not string:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stConsumeCableRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 6)
+	stConsumeSlot({_inv}, 8)
