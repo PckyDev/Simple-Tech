@@ -11,6 +11,8 @@ function stPowerMachineBlock(b: block) :: block:
 			return {_press}
 	if stIsWaterWheelPart({_b}) is true:
 		return stWaterWheelMachineAnchorBlock({_b})
+	if stIsCablePolePort({_b}) is true:
+		return {_b}
 
 function stPowerMachineId(b: block) :: text:
 	if stIsPlacedPress({_b}) is true:
@@ -19,6 +21,50 @@ function stPowerMachineId(b: block) :: text:
 		set {_support} to stWaterWheelSupportBlockFromPart({_b})
 		if {_support} is set:
 			return "waterwheel:%stPowerMachineBlockKey({_support})%"
+	if stIsCablePolePort({_b}) is true:
+		return "pole:%stCablePoleIdFromPart({_b})%"
+
+function stPowerNodeLinkCountFromId(id: text) :: number:
+	set {_count} to 0
+	loop {st.power.node::%{_id}%::links::*}:
+		add 1 to {_count}
+	return {_count}
+
+function stDisconnectPowerNodeById(id: text, dropCable: boolean, dropLoc: location):
+	set {_links::*} to {st.power.node::%{_id}%::links::*}
+	loop {_links::*}:
+		stDisconnectPowerLink(loop-value, {_dropCable}, {_dropLoc})
+
+function stPowerNodeBlockFromId(id: text) :: block:
+	set {_key} to {_id}
+	if {_key} starts with "press:":
+		replace first "press:" with "" in {_key}
+		return {st.press.block::%{_key}%}
+	if {_key} starts with "waterwheel:":
+		replace first "waterwheel:" with "" in {_key}
+		return {st.waterwheel.machine::%{_key}%::barrel}
+	if {_key} starts with "pole:":
+		replace first "pole:" with "" in {_key}
+		return {st.pole::%{_key}%::base}
+
+function stPowerEndpointAvailable(b: block) :: boolean:
+	set {_id} to stPowerMachineId({_b})
+	if {_id} is not set:
+		return false
+	if stIsCablePolePort({_b}) is true:
+		if {st.power.portlink::%stBlockId({_b})%} is set:
+			return false
+		if stPowerNodeLinkCountFromId({_id}) >= 3:
+			return false
+		return true
+	if stPowerNodeLinkCountFromId({_id}) >= 1:
+		return false
+	return true
+
+function stIsPowerRelayEndpoint(b: block) :: boolean:
+	if stIsCablePolePort({_b}) is true:
+		return true
+	return false
 
 function stMachineCanOutputPower(b: block) :: boolean:
 	if stIsWaterWheelPart({_b}) is true:
@@ -57,6 +103,11 @@ function stMachineAcceptPower(b: block, amount: number) :: boolean:
 
 function stMachineCableAnchorLocation(b: block) :: location:
 	set {_loc} to location of {_b}
+	if stIsCablePolePort({_b}) is true:
+		# add 0.5 to x-coordinate of {_loc}
+		# add 0.25 to y-coordinate of {_loc}
+		# add 0.5 to z-coordinate of {_loc}
+		return {_loc}
 	add 0.25 to y-coordinate of {_loc}
 	return {_loc}
 
@@ -96,12 +147,12 @@ function stClearPowerLinkVisual(id: text):
 	set {_anchor2} to {st.power.link::%{_id}%::anchor2}
 	if {_anchor1} is set:
 		stQueuePowerLeadCleanup(location of {_anchor1})
-		set {st.power.anchor.removing::%uuid of {_anchor1}%} to true
+		set {st.power.anchor.removing::%uuid of {_anchor1}%} to {_id}
 		kill {_anchor1}
 		delete {st.power.anchor::%uuid of {_anchor1}%}
 	if {_anchor2} is set:
 		stQueuePowerLeadCleanup(location of {_anchor2})
-		set {st.power.anchor.removing::%uuid of {_anchor2}%} to true
+		set {st.power.anchor.removing::%uuid of {_anchor2}%} to {_id}
 		kill {_anchor2}
 		delete {st.power.anchor::%uuid of {_anchor2}%}
 	delete {st.power.link::%{_id}%::anchor1}
@@ -114,13 +165,13 @@ function stQueuePowerLeadCleanup(loc: location):
 	set {st.power.cleanup::%{_id}%::loc} to {_loc}
 	set {st.power.cleanup::%{_id}%::ticks} to 8
 
-function stClearNearbyPowerAnchors(loc: location):
+function stClearNearbyPowerAnchors(loc: location, linkId: text):
 	loop entities in radius 8 around {_loc}:
 		if loop-entity is rabbit:
-			if {st.power.anchor::%uuid of loop-entity%} is set:
-				set {st.power.anchor.removing::%uuid of loop-entity%} to true
+			if {st.power.anchor::%uuid of loop-entity%} = {_linkId}:
+				set {st.power.anchor.removing::%uuid of loop-entity%} to {_linkId}
 				kill loop-entity
-			else if {st.power.anchor.removing::%uuid of loop-entity%} is set:
+			else if {st.power.anchor.removing::%uuid of loop-entity%} = {_linkId}:
 				kill loop-entity
 
 function stDisconnectPowerLink(id: text, dropCable: boolean, dropLoc: location):
@@ -129,36 +180,39 @@ function stDisconnectPowerLink(id: text, dropCable: boolean, dropLoc: location):
 	set {_from} to {st.power.link::%{_id}%::from}
 	set {_to} to {st.power.link::%{_id}%::to}
 	if {_from} is set:
-		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_from}))
+		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_from}), {_id})
 	if {_to} is set:
-		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_to}))
+		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_to}), {_id})
 	stClearPowerLinkVisual({_id})
 	remove {_id} from {st.power.links::*}
 	if {_fromId} is set:
-		delete {st.power.machinelink::%{_fromId}%}
+		remove {_id} from {st.power.node::%{_fromId}%::links::*}
 	if {_toId} is set:
-		delete {st.power.machinelink::%{_toId}%}
+		remove {_id} from {st.power.node::%{_toId}%::links::*}
+	if {_from} is set:
+		if stIsCablePolePort({_from}) is true:
+			delete {st.power.portlink::%stBlockId({_from})%}
+	if {_to} is set:
+		if stIsCablePolePort({_to}) is true:
+			delete {st.power.portlink::%stBlockId({_to})%}
 	delete {st.power.link::%{_id}%::*}
 	if {_dropCable} is true:
 		drop stCable() at {_dropLoc}
 	stQueuePowerLeadCleanup({_dropLoc})
-	stClearNearbyPowerAnchors({_dropLoc})
+	stClearNearbyPowerAnchors({_dropLoc}, {_id})
 	if {_from} is set:
 		stQueuePowerLeadCleanup(location of {_from})
-		stClearNearbyPowerAnchors(location of {_from})
+		stClearNearbyPowerAnchors(location of {_from}, {_id})
 	if {_to} is set:
 		stQueuePowerLeadCleanup(location of {_to})
-		stClearNearbyPowerAnchors(location of {_to})
+		stClearNearbyPowerAnchors(location of {_to}, {_id})
 
 function stDisconnectMachinePower(b: block, dropCable: boolean):
 	set {_machineId} to stPowerMachineId({_b})
 	if {_machineId} is not set:
 		stop
-	set {_linkId} to {st.power.machinelink::%{_machineId}%}
-	if {_linkId} is not set:
-		stop
 	set {_dropLoc} to location of {_b}
-	stDisconnectPowerLink({_linkId}, {_dropCable}, {_dropLoc})
+	stDisconnectPowerNodeById({_machineId}, {_dropCable}, {_dropLoc})
 
 function stPowerLinkId(from: block, to: block) :: text:
 	return "%stPowerMachineId({_from})%->%stPowerMachineId({_to})%"
@@ -167,7 +221,7 @@ function stMachineHasCable(b: block) :: boolean:
 	set {_machineId} to stPowerMachineId({_b})
 	if {_machineId} is not set:
 		return false
-	if {st.power.machinelink::%{_machineId}%} is set:
+	if stPowerNodeLinkCountFromId({_machineId}) > 0:
 		return true
 	return false
 
@@ -180,9 +234,64 @@ function stCreatePowerLink(from: block, to: block):
 	set {st.power.link::%{_linkId}%::to} to {_to}
 	set {st.power.link::%{_linkId}%::fromid} to {_fromId}
 	set {st.power.link::%{_linkId}%::toid} to {_toId}
-	set {st.power.machinelink::%{_fromId}%} to {_linkId}
-	set {st.power.machinelink::%{_toId}%} to {_linkId}
+	add {_linkId} to {st.power.node::%{_fromId}%::links::*}
+	add {_linkId} to {st.power.node::%{_toId}%::links::*}
+	if stIsCablePolePort({_from}) is true:
+		set {st.power.portlink::%stBlockId({_from})%} to {_linkId}
+	if stIsCablePolePort({_to}) is true:
+		set {st.power.portlink::%stBlockId({_to})%} to {_linkId}
 	stCreatePowerLinkVisual({_linkId})
+
+function stDisconnectCablePolePort(port: block, dropCable: boolean):
+	set {_linkId} to {st.power.portlink::%stBlockId({_port})%}
+	if {_linkId} is not set:
+		stop
+	stDisconnectPowerLink({_linkId}, {_dropCable}, location of {_port})
+
+function stTransferPowerFromSource(b: block):
+	set {_sourceId} to stPowerMachineId({_b})
+	if {_sourceId} is not set:
+		stop
+	set {_rate} to stMachineOutputRate({_b})
+	if {_rate} <= 0:
+		stop
+	set {_queue::*} to {_sourceId}
+	set {_visited::%{_sourceId}%} to true
+	set {_index} to 1
+	while {_queue::%{_index}%} is set:
+		set {_nodeId} to {_queue::%{_index}%}
+		loop {st.power.links::*}:
+			set {_linkId} to loop-value
+			set {_a} to {st.power.link::%{_linkId}%::fromid}
+			set {_bId} to {st.power.link::%{_linkId}%::toid}
+			if {_a} is {_nodeId}:
+				if {_visited::%{_bId}%} is not true:
+					set {_visited::%{_bId}%} to true
+					add {_bId} to {_queue::*}
+			else if {_bId} is {_nodeId}:
+				if {_visited::%{_a}%} is not true:
+					set {_visited::%{_a}%} to true
+					add {_a} to {_queue::*}
+		add 1 to {_index}
+	set {_receiverCount} to 0
+	loop {_queue::*}:
+		if loop-value is not {_sourceId}:
+			set {_receiver} to stPowerNodeBlockFromId(loop-value)
+			if stMachineCanReceivePower({_receiver}) is true:
+				add 1 to {_receiverCount}
+				set {_receivers::%{_receiverCount}%} to {_receiver}
+	if {_receiverCount} <= 0:
+		stop
+	set {_routeIndex} to {st.power.route::%{_sourceId}%}
+	if {_routeIndex} is not set:
+		set {_routeIndex} to 1
+	if {_routeIndex} > {_receiverCount}:
+		set {_routeIndex} to 1
+	stMachineAcceptPower({_receivers::%{_routeIndex}%}, {_rate})
+	add 1 to {_routeIndex}
+	if {_routeIndex} > {_receiverCount}:
+		set {_routeIndex} to 1
+	set {st.power.route::%{_sourceId}%} to {_routeIndex}
 
 function stConsumeOneCableFromTool(p: player):
 	set {_tool} to {_p}'s tool
@@ -197,51 +306,56 @@ on right click:
 		stop
 	if stIsCable(player's tool) is false:
 		stop
-	set {_machine} to stPowerMachineBlock(event-block)
-	if {_machine} is not set:
+	set {_endpoint} to stPowerMachineBlock(event-block)
+	if {_endpoint} is not set:
 		stop
 	cancel event
 	set {_playerId} to "%uuid of player%"
 	set {_pending} to {st.power.pending::%{_playerId}%}
 	if {_pending} is not set:
-		set {st.power.pending::%{_playerId}%} to {_machine}
-		stShowMachineDeltaHologram({_machine}, "&eCable start", player)
+		set {st.power.pending::%{_playerId}%} to {_endpoint}
+		stShowMachineDeltaHologram({_endpoint}, "&eCable start", player)
 		stop
 	delete {st.power.pending::%{_playerId}%}
-	if stPowerMachineId({_pending}) = stPowerMachineId({_machine}):
-		stShowMachineDeltaHologram({_machine}, "&7Cancelled", player)
+	if stBlockId({_pending}) = stBlockId({_endpoint}):
+		stShowMachineDeltaHologram({_endpoint}, "&7Cancelled", player)
+		stop
+	if stPowerMachineId({_pending}) = stPowerMachineId({_endpoint}):
+		stShowMachineDeltaHologram({_endpoint}, "&7Same node", player)
 		stop
 	set {_from} to {_pending}
-	set {_to} to {_machine}
-	if stMachineCanOutputPower({_from}) is false:
-		if stMachineCanOutputPower({_to}) is true:
-			set {_from} to {_machine}
-			set {_to} to {_pending}
-		else:
-			stShowMachineDeltaHologram({_machine}, "&cNo output", player)
-			stop
-	if stMachineCanReceivePower({_to}) is false:
-		if stMachineCanReceivePower({_from}) is true:
-			set {_swap} to {_from}
-			set {_from} to {_to}
-			set {_to} to {_swap}
-		else:
-			stShowMachineDeltaHologram({_machine}, "&cNo input", player)
-			stop
-	if stMachineCanOutputPower({_from}) is false:
-		stShowMachineDeltaHologram({_machine}, "&cInvalid", player)
-		stop
-	if stMachineCanReceivePower({_to}) is false:
-		stShowMachineDeltaHologram({_machine}, "&cInvalid", player)
-		stop
-	if stMachineHasCable({_from}) is true:
+	set {_to} to {_endpoint}
+	if stPowerEndpointAvailable({_from}) is false:
 		stShowMachineDeltaHologram({_from}, "&cBusy", player)
 		stop
-	if stMachineHasCable({_to}) is true:
+	if stPowerEndpointAvailable({_to}) is false:
 		stShowMachineDeltaHologram({_to}, "&cBusy", player)
 		stop
+	if stIsPowerRelayEndpoint({_from}) is false:
+		if stIsPowerRelayEndpoint({_to}) is false:
+			if stMachineCanOutputPower({_from}) is false:
+				if stMachineCanOutputPower({_to}) is true:
+					set {_from} to {_endpoint}
+					set {_to} to {_pending}
+				else:
+					stShowMachineDeltaHologram({_to}, "&cNo output", player)
+					stop
+			if stMachineCanReceivePower({_to}) is false:
+				if stMachineCanReceivePower({_from}) is true:
+					set {_swap} to {_from}
+					set {_from} to {_to}
+					set {_to} to {_swap}
+				else:
+					stShowMachineDeltaHologram({_to}, "&cNo input", player)
+					stop
+			if stMachineCanOutputPower({_from}) is false:
+				stShowMachineDeltaHologram({_to}, "&cInvalid", player)
+				stop
+			if stMachineCanReceivePower({_to}) is false:
+				stShowMachineDeltaHologram({_to}, "&cInvalid", player)
+				stop
 	if distance between location of {_from} and location of {_to} > 10:
-		stShowMachineDeltaHologram({_machine}, "&cToo far", player)
+		stShowMachineDeltaHologram({_to}, "&cToo far", player)
 		stop
 	stCreatePowerLink({_from}, {_to})
 	stConsumeOneCableFromTool(player)
@@ -308,19 +422,23 @@ every 10 ticks:
 				if {_fromId} is set:
 					delete {st.power.machinelink::%{_fromId}%}
 				if {_toId} is set:
-					delete {st.power.machinelink::%{_toId}%}
+					remove {_linkId} from {st.power.node::%{_toId}%::links::*}
+				if {_fromId} is set:
+					remove {_linkId} from {st.power.node::%{_fromId}%::links::*}
 				delete {st.power.link::%{_linkId}%::*}
 		else if {_to} is not set:
 			stDisconnectPowerLink({_linkId}, true, location of {_from})
-		else if stMachineCanOutputPower({_from}) is false:
+		else if stPowerMachineId({_from}) is not set:
 			stDisconnectPowerLink({_linkId}, true, location of {_from})
-		else if stMachineCanReceivePower({_to}) is false:
+		else if stPowerMachineId({_to}) is not set:
 			stDisconnectPowerLink({_linkId}, true, location of {_to})
 		else:
 			if {_anchor1} is not set:
 				stCreatePowerLinkVisual({_linkId})
 			else if {_anchor2} is not set:
 				stCreatePowerLinkVisual({_linkId})
-			set {_rate} to stMachineOutputRate({_from})
-			if {_rate} > 0:
-				stMachineAcceptPower({_to}, {_rate})
+
+	loop {st.waterwheel.ids::*}:
+		set {_source} to {st.waterwheel.machine::%loop-value%::barrel}
+		if {_source} is set:
+			stTransferPowerFromSource({_source})

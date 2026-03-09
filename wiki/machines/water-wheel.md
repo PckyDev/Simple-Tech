@@ -29,11 +29,11 @@
 ## Connection Setup
 1. Craft a [Cable](../items/cable.md).
 2. Right-click the Water Wheel.
-3. Right-click a [Press](press.md) within `10` blocks.
+3. Right-click a [Press](press.md) within `10` blocks, or route the connection through a [Cable Utility Pole](cable-utility-pole.md).
 
 ## Notes
 - If any part of the multiblock is broken, the whole Water Wheel breaks.
 - Breaking the machine returns the Water Wheel item.
 - Connected Cables are dropped back if the machine is removed.
 - The machine shows status text when looked at in-game.
-- Water Wheels are commonly paired with a [Press](press.md) and [Belt](belt.md) for basic automation.
+- Water Wheels are commonly paired with a [Press](press.md), [Belt](belt.md), and [Cable Utility Pole](cable-utility-pole.md) for cleaner automation layouts.

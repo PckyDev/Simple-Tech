@@ -21,6 +21,7 @@
 
 ## Automation
 - The Press can also receive power from a [Water Wheel](water-wheel.md) through a [Cable](../items/cable.md).
+- That Cable connection can also be routed through a [Cable Utility Pole](cable-utility-pole.md).
 - Automatic power is transferred in small increments over time instead of by manual clicks.
 - Only one Cable can be connected to a Press at once.
 - A [Belt](belt.md) can be placed in front of the Press to carry items into and away from the machine.

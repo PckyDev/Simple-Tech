@@ -47,6 +47,7 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 - [Press](machines/press.md)
 - [Water Wheel](machines/water-wheel.md)
 - [Belt](machines/belt.md)
+- [Cable Utility Pole](machines/cable-utility-pole.md)
 
 ---
 
@@ -60,3 +61,4 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 6. Craft a [Water Wheel](machines/water-wheel.md) for automatic power generation
 7. Craft a [Cable](items/cable.md) to connect the Water Wheel to a [Press](machines/press.md)
 8. Build [Belts](machines/belt.md) to move items between machines
+9. Use a [Cable Utility Pole](machines/cable-utility-pole.md) to route multiple Cable connections more cleanly

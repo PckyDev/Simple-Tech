@@ -18,16 +18,19 @@
 3. Right-click the second machine to complete the link.
 
 ## Current Rules
-- One Cable connects exactly two machines.
+- One Cable connects exactly two endpoints.
 - Maximum link range is `10` blocks.
-- A machine can only be part of one Cable link at a time.
+- Most machine endpoints can only be part of one Cable link at a time.
+- A [Cable Utility Pole](../machines/cable-utility-pole.md) can hold up to `3` Cable connections, one on each top port.
 - Breaking a connected machine drops the Cable back.
 
 ## Current Machine Support
 - **Power source:** [Water Wheel](../machines/water-wheel.md)
 - **Power receiver:** [Press](../machines/press.md)
+- **Relay / routing:** [Cable Utility Pole](../machines/cable-utility-pole.md)
 
 ## Notes
 - The Cable uses the vanilla lead appearance.
 - A visual lead line appears between connected machines.
+- Cable Utility Poles can be used to reroute and organize Cable lines.
 - If either end becomes invalid, the connection is removed.
