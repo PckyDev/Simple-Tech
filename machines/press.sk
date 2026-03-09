@@ -279,6 +279,9 @@ function stTryRunPress(b: block) :: boolean:
 		return false
 	set {_front} to stPressFrontBlock({_b})
 	set {_frontLoc} to location of {_front}
+	set {_resultLoc} to {_frontLoc}
+	if stIsBeltPart({_front}) is true:
+		set {_resultLoc} to stBeltTransportLocation({_front})
 	loop dropped items in radius 1 around {_frontLoc}:
 		set {_input} to item of loop-entity
 		set {_kind} to stPrimitiveProcessKind({_input})
@@ -289,7 +292,12 @@ function stTryRunPress(b: block) :: boolean:
 			else:
 				set amount of {_input} to amount of {_input} - 1
 				set item of loop-entity to {_input}
-			drop {_result} at {_frontLoc}
+			drop {_result} at {_resultLoc} without velocity
+			if last dropped item is set:
+				if stIsBeltPart({_front}) is true:
+					set {_beltDirection} to stBeltDirection({_front})
+					if {_beltDirection} is set:
+						set velocity of last dropped item to stBeltMoveVector({_beltDirection})
 			set {_effectLoc} to stCenteredBlockEffectLocation({_front})
 			if {_kind} is "crush":
 				stPlayPressCrushingEffects({_effectLoc})

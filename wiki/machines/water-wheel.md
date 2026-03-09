@@ -36,3 +36,4 @@
 - Breaking the machine returns the Water Wheel item.
 - Connected Cables are dropped back if the machine is removed.
 - The machine shows status text when looked at in-game.
+- Water Wheels are commonly paired with a [Press](press.md) and [Belt](belt.md) for basic automation.

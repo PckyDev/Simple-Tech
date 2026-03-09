@@ -1,0 +1,503 @@
+function stBeltBase() :: item:
+	if {st.cache.belt_base} is set:
+		return {st.cache.belt_base}
+	set {_item} to stFindItemByRawName("minecraft:netherite_nautilus_armor")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("minecraft:netherite_nautilus_armor")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("netherite_nautilus_armor")
+	if {_item} is not set:
+		set {_item} to stParseSingleItem("netherite nautilus armor")
+	if {_item} is not set:
+		set {_item} to deepslate tile slab
+	set {st.cache.belt_base} to {_item}
+	return {_item}
+
+function stBelt() :: item:
+	set {_item} to stBeltBase()
+	set lore of {_item} to "&7Moves items in a straight line." and "&7Use two clicks on the ground to build it." and "&8Tier 1 • Mechanical Tech" and "&0st:belt"
+	set {_item} to {_item} named "&8Belt"
+	set maximum stack size of {_item} to 64
+	return {_item}
+
+function stIsBelt(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	return stHasId({_i}, "st:belt")
+
+function stIsBeltRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is not dried kelp:
+		return false
+	if slot 2 of {_inv} is not dried kelp:
+		return false
+	if slot 3 of {_inv} is not dried kelp:
+		return false
+	if slot 4 of {_inv} is not dried kelp:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:copper_shaft") is false:
+		return false
+	if slot 6 of {_inv} is not dried kelp:
+		return false
+	if stSlotIsEmpty({_inv}, 7) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 8) is false:
+		return false
+	if stSlotIsEmpty({_inv}, 9) is false:
+		return false
+	return true
+
+function stConsumeBeltRecipe(inv: inventory):
+	stConsumeSlot({_inv}, 1)
+	stConsumeSlot({_inv}, 2)
+	stConsumeSlot({_inv}, 3)
+	stConsumeSlot({_inv}, 4)
+	stConsumeSlot({_inv}, 5)
+	stConsumeSlot({_inv}, 6)
+
+function stIsBeltPart(b: block) :: boolean:
+	if {st.belt.part::%stBlockId({_b})%} is set:
+		return true
+	return false
+
+function stBeltLineId(b: block) :: text:
+	return {st.belt.part::%stBlockId({_b})%}
+
+function stBeltDirection(b: block) :: text:
+	set {_id} to stBeltLineId({_b})
+	if {_id} is set:
+		return {st.belt.line::%{_id}%::direction}
+
+function stBeltPlacementBlock(b: block) :: block:
+	return block above {_b}
+
+function stBeltDirectionFromPoints(start: block, finish: block, p: player) :: text:
+	set {_startLoc} to location of {_start}
+	set {_finishLoc} to location of {_finish}
+	if x-coordinate of {_finishLoc} > x-coordinate of {_startLoc}:
+		return "east"
+	if x-coordinate of {_finishLoc} < x-coordinate of {_startLoc}:
+		return "west"
+	if z-coordinate of {_finishLoc} > z-coordinate of {_startLoc}:
+		return "south"
+	if z-coordinate of {_finishLoc} < z-coordinate of {_startLoc}:
+		return "north"
+	return stHorizontalSideName({_p})
+
+function stPlaceSingleBeltBlock(b: block, lineId: text):
+	set block at location of {_b} to deepslate tile slab
+	set {st.belt.part::%stBlockId({_b})%} to {_lineId}
+	add {_b} to {st.belt.line::%{_lineId}%::blocks::*}
+	add {_b} to {st.belt.blocks::*}
+
+function stConsumeHeldBelts(p: player, amount: number):
+	set {_tool} to {_p}'s tool
+	set amount of {_tool} to amount of {_tool} - {_amount}
+	if amount of {_tool} <= 0:
+		set {_p}'s tool to air
+	else:
+		set {_p}'s tool to {_tool}
+
+function stQueueBeltBuildPart(buildId: text, b: block):
+	add 1 to {st.belt.build::%{_buildId}%::count}
+	set {_index} to {st.belt.build::%{_buildId}%::count}
+	set {st.belt.build::%{_buildId}%::parts::%{_index}%} to {_b}
+
+function stFinishBeltBuildStep(b: block):
+	set {_loc} to stBeltArrowLocation({_b})
+	draw 3 cloud particles with a velocity of vector(0, 0.01, 0) at {_loc}
+	draw 2 crit particles with a velocity of vector(0, 0.01, 0) at {_loc}
+	play sound "block wool place" with volume 0.7 and pitch 1.6 at location of {_b}
+
+function stTryBuildBelt(p: player, start: block, finish: block) :: boolean:
+	set {_startLoc} to location of {_start}
+	set {_finishLoc} to location of {_finish}
+	if y-coordinate of {_startLoc} is not y-coordinate of {_finishLoc}:
+		send "&8[&6Simple Tech&8]&r &cBelts must be horizontal." to {_p}
+		return false
+	set {_sameX} to false
+	set {_sameZ} to false
+	if x-coordinate of {_startLoc} = x-coordinate of {_finishLoc}:
+		set {_sameX} to true
+	if z-coordinate of {_startLoc} = z-coordinate of {_finishLoc}:
+		set {_sameZ} to true
+	if {_sameX} is {_sameZ}:
+		send "&8[&6Simple Tech&8]&r &cBelts must be in a straight line." to {_p}
+		return false
+	set {_direction} to stBeltDirectionFromPoints({_start}, {_finish}, {_p})
+	set {_count} to 0
+	if {_sameX} is true:
+		set {_minZ} to z-coordinate of {_startLoc}
+		set {_maxZ} to z-coordinate of {_finishLoc}
+		if {_minZ} > {_maxZ}:
+			set {_swap} to {_minZ}
+			set {_minZ} to {_maxZ}
+			set {_maxZ} to {_swap}
+		loop {_maxZ} - {_minZ} + 1 times:
+			set {_z} to {_minZ} + loop-number - 1
+			set {_loc} to location of {_start}
+			set z-coordinate of {_loc} to {_z}
+			set {_part} to block at {_loc}
+			if {_part} is not air:
+				send "&8[&6Simple Tech&8]&r &cThat path is blocked." to {_p}
+				return false
+			if block below {_part} is air:
+				send "&8[&6Simple Tech&8]&r &cBelts need solid ground underneath." to {_p}
+				return false
+			if block below {_part} is water:
+				send "&8[&6Simple Tech&8]&r &cBelts cannot be built over water." to {_p}
+				return false
+			add 1 to {_count}
+	else:
+		set {_minX} to x-coordinate of {_startLoc}
+		set {_maxX} to x-coordinate of {_finishLoc}
+		if {_minX} > {_maxX}:
+			set {_swap} to {_minX}
+			set {_minX} to {_maxX}
+			set {_maxX} to {_swap}
+		loop {_maxX} - {_minX} + 1 times:
+			set {_x} to {_minX} + loop-number - 1
+			set {_loc} to location of {_start}
+			set x-coordinate of {_loc} to {_x}
+			set {_part} to block at {_loc}
+			if {_part} is not air:
+				send "&8[&6Simple Tech&8]&r &cThat path is blocked." to {_p}
+				return false
+			if block below {_part} is air:
+				send "&8[&6Simple Tech&8]&r &cBelts need solid ground underneath." to {_p}
+				return false
+			if block below {_part} is water:
+				send "&8[&6Simple Tech&8]&r &cBelts cannot be built over water." to {_p}
+				return false
+			add 1 to {_count}
+	if amount of {_p}'s tool < {_count}:
+		send "&8[&6Simple Tech&8]&r &cYou need %{_count}% belt items in your hand." to {_p}
+		return false
+	add 1 to {st.belt.nextid}
+	set {_lineId} to "belt:%{st.belt.nextid}%"
+	set {st.belt.line::%{_lineId}%::direction} to {_direction}
+	add 1 to {st.belt.build.nextid}
+	set {_buildId} to "build:%{st.belt.build.nextid}%"
+	add {_buildId} to {st.belt.build.ids::*}
+	set {st.belt.build::%{_buildId}%::lineid} to {_lineId}
+	set {st.belt.build::%{_buildId}%::step} to 1
+	if {_sameX} is true:
+		loop {_maxZ} - {_minZ} + 1 times:
+			set {_z} to {_minZ} + loop-number - 1
+			set {_loc} to location of {_start}
+			set z-coordinate of {_loc} to {_z}
+			stQueueBeltBuildPart({_buildId}, block at {_loc})
+	else:
+		loop {_maxX} - {_minX} + 1 times:
+			set {_x} to {_minX} + loop-number - 1
+			set {_loc} to location of {_start}
+			set x-coordinate of {_loc} to {_x}
+			stQueueBeltBuildPart({_buildId}, block at {_loc})
+	stConsumeHeldBelts({_p}, {_count})
+	set {st.belt.build::%{_buildId}%::owner} to uuid of {_p}
+	send "&8[&6Simple Tech&8]&r &aBuilding a belt with %{_count}% parts." to {_p}
+	return true
+
+function stToggleBeltDirection(b: block):
+	set {_id} to stBeltLineId({_b})
+	if {_id} is not set:
+		stop
+	set {_direction} to {st.belt.line::%{_id}%::direction}
+	if {_direction} is not set:
+		set {_direction} to "east"
+	set {st.belt.line::%{_id}%::direction} to stOppositeHorizontal({_direction})
+
+function stClearBeltLineIfEmpty(id: text):
+	if {st.belt.line::%{_id}%::blocks::*} is set:
+		stop
+	delete {st.belt.line::%{_id}%::*}
+
+function stRemoveBeltPart(b: block, dropItem: boolean):
+	set {_id} to stBeltLineId({_b})
+	if {_id} is not set:
+		stop
+	delete {st.belt.part::%stBlockId({_b})%}
+	remove {_b} from {st.belt.line::%{_id}%::blocks::*}
+	remove {_b} from {st.belt.blocks::*}
+	if {_dropItem} is true:
+		drop stBelt() at location of {_b}
+	stClearBeltLineIfEmpty({_id})
+
+function stBeltOffsetBlock(b: block, direction: text, distance: number) :: block:
+	set {_loc} to location of {_b}
+	if {_direction} is "north":
+		remove {_distance} from z-coordinate of {_loc}
+	else if {_direction} is "south":
+		add {_distance} to z-coordinate of {_loc}
+	else if {_direction} is "west":
+		remove {_distance} from x-coordinate of {_loc}
+	else:
+		add {_distance} to x-coordinate of {_loc}
+	return block at {_loc}
+
+function stBeltTransportLocation(b: block) :: location:
+	set {_loc} to location of {_b}
+	# add 0.5 to x-coordinate of {_loc}
+	add 0.35 to y-coordinate of {_loc}
+	# add 0.5 to z-coordinate of {_loc}
+	return {_loc}
+
+function stBeltNextPart(b: block) :: block:
+	set {_direction} to stBeltDirection({_b})
+	if {_direction} is not set:
+		stop
+	set {_next} to stBeltOffsetBlock({_b}, {_direction}, 1)
+	if stIsBeltPart({_next}) is true:
+		return {_next}
+
+function stBeltTurnVector(fromLoc: location, toLoc: location) :: vector:
+	set {_dx} to x-coordinate of {_toLoc} - x-coordinate of {_fromLoc}
+	set {_dz} to z-coordinate of {_toLoc} - z-coordinate of {_fromLoc}
+	set {_absDx} to {_dx}
+	set {_absDz} to {_dz}
+	if {_absDx} < 0:
+		set {_absDx} to {_absDx} * -1
+	if {_absDz} < 0:
+		set {_absDz} to {_absDz} * -1
+	set {_length} to {_absDx} + {_absDz}
+	if {_length} <= 0:
+		return vector(0, 0.03, 0)
+	return vector(({_dx} / {_length}) * 0.11, 0.03, ({_dz} / {_length}) * 0.11)
+
+function stBeltMoveVector(direction: text) :: vector:
+	if {_direction} is "north":
+		return vector(0, 0.03, -0.08)
+	if {_direction} is "south":
+		return vector(0, 0.03, 0.08)
+	if {_direction} is "west":
+		return vector(-0.08, 0.03, 0)
+	return vector(0.08, 0.03, 0)
+
+function stBeltTurnReady(e: entity, b: block) :: boolean:
+	set {_direction} to stBeltDirection({_b})
+	if {_direction} is not set:
+		return false
+	set {_loc} to location of {_e}
+	set {_center} to stBeltTransportLocation({_b})
+	if {_direction} is "north":
+		if z-coordinate of {_loc} <= z-coordinate of {_center} - 0.42:
+			return true
+	else if {_direction} is "south":
+		if z-coordinate of {_loc} >= z-coordinate of {_center} + 0.42:
+			return true
+	else if {_direction} is "west":
+		if x-coordinate of {_loc} <= x-coordinate of {_center} - 0.42:
+			return true
+	else:
+		if x-coordinate of {_loc} >= x-coordinate of {_center} + 0.42:
+			return true
+	return false
+
+function stPreferBeltPart(e: entity, b: block, ticks: number):
+	set {_entityId} to "%uuid of {_e}%"
+	set {st.belt.preferred::%{_entityId}%::block} to stBlockId({_b})
+	set {st.belt.preferred::%{_entityId}%::until} to {st.belt.move.tick} + {_ticks}
+
+function stMoveItemAlongBelt(e: entity, b: block):
+	set {_direction} to stBeltDirection({_b})
+	if {_direction} is not set:
+		stop
+	set {_center} to stBeltTransportLocation({_b})
+	set {_next} to stBeltNextPart({_b})
+	set {_nextDirection} to stBeltDirection({_next})
+	if {_next} is set:
+		if {_nextDirection} is set:
+			if {_nextDirection} is not {_direction}:
+				if stBeltTurnReady({_e}, {_b}) is true:
+					set {_turnTarget} to stBeltTransportLocation({_next})
+					set {_turnLoc} to location of {_e}
+					set y-coordinate of {_turnLoc} to y-coordinate of {_turnTarget}
+					stPreferBeltPart({_e}, {_next}, 3)
+					teleport {_e} to {_turnLoc}
+					if distance between location of {_e} and {_turnTarget} <= 0.35:
+						teleport {_e} to {_turnTarget}
+						stPreferBeltPart({_e}, {_next}, 3)
+						set velocity of {_e} to stBeltMoveVector({_nextDirection})
+					else:
+						set velocity of {_e} to stBeltTurnVector(location of {_e}, {_turnTarget})
+					stop
+	set {_target} to location of {_e}
+	set y-coordinate of {_target} to y-coordinate of {_center}
+	if {_direction} is "north":
+		set x-coordinate of {_target} to x-coordinate of {_center}
+	else if {_direction} is "south":
+		set x-coordinate of {_target} to x-coordinate of {_center}
+	else if {_direction} is "west":
+		set z-coordinate of {_target} to z-coordinate of {_center}
+	else:
+		set z-coordinate of {_target} to z-coordinate of {_center}
+	teleport {_e} to {_target}
+	set velocity of {_e} to stBeltMoveVector({_direction})
+
+function stBeltArrowText(direction: text) :: text:
+	if {_direction} is "north":
+		return "⬆"
+	if {_direction} is "south":
+		return "⬇"
+	if {_direction} is "west":
+		return "⬅"
+	return "➡"
+
+function stBeltArrowLocation(b: block) :: location:
+	set {_loc} to location of {_b}
+	# add 0.1 to x-coordinate of {_loc}
+	add 0.05 to y-coordinate of {_loc}
+	add 0.275 to z-coordinate of {_loc}
+	set yaw of {_loc} to 0
+	set pitch of {_loc} to -90
+	return {_loc}
+
+function stSpawnBeltArrowDisplay(loc: location, text: text, viewer: player) :: entity:
+	spawn a text display at {_loc}
+	set {_display} to last spawned entity
+	set text of {_display} to {_text}
+	set billboard of {_display} to fixed
+	set text alignment of {_display} to center aligned
+	set line width of {_display} to 120
+	set text opacity of {_display} to 255
+	set interpolation delay of {_display} to 0 ticks
+	set interpolation duration of {_display} to 2 ticks
+	set transformation scale of {_display} to vector from 2, 2, 2
+	hide {_display} from all players
+	reveal {_display} to {_viewer}
+	return {_display}
+
+function stClearPlayerBeltArrow(p: player):
+	set {_key} to "%uuid of {_p}%"
+	set {_display} to {st.belt.arrow::%{_key}%::display}
+	if {_display} is set:
+		kill {_display}
+	delete {st.belt.arrow::%{_key}%::*}
+
+function stShowPlayerBeltArrow(p: player, b: block):
+	set {_direction} to stBeltDirection({_b})
+	if {_direction} is not set:
+		stClearPlayerBeltArrow({_p})
+		stop
+	set {_key} to "%uuid of {_p}%"
+	set {_text} to stBeltArrowText({_direction})
+	set {_loc} to stBeltArrowLocation({_b})
+	set {_display} to {st.belt.arrow::%{_key}%::display}
+	if {_display} is not set:
+		set {_display} to stSpawnBeltArrowDisplay({_loc}, {_text}, {_p})
+		set {st.belt.arrow::%{_key}%::display} to {_display}
+	else:
+		teleport {_display} to {_loc}
+		set text of {_display} to {_text}
+	set {st.belt.arrow::%{_key}%::block} to stBlockId({_b})
+
+function stUpdateBeltArrowDisplaysForLine(id: text):
+	loop all players:
+		set {_key} to "%uuid of loop-player%"
+		if {st.belt.arrow::%{_key}%::block} is set:
+			set {_block} to target block of loop-player
+			if {_block} is set:
+				if stIsBeltPart({_block}) is true:
+					if stBeltLineId({_block}) = {_id}:
+						stShowPlayerBeltArrow(loop-player, {_block})
+
+on place of deepslate tile slab:
+	if stIsBelt(item) is true:
+		cancel event
+
+on right click:
+	if event-block is not set:
+		stop
+	if stIsBelt(player's tool) is false:
+		stop
+	cancel event
+	set {_placeBlock} to stBeltPlacementBlock(event-block)
+	set {_playerId} to "%uuid of player%"
+	set {_start} to {st.belt.pending::%{_playerId}%}
+	if {_start} is not set:
+		set {st.belt.pending::%{_playerId}%} to {_placeBlock}
+		send "&8[&6Simple Tech&8]&r &eBelt start set." to player
+		stop
+	delete {st.belt.pending::%{_playerId}%}
+	if stBlockId({_start}) = stBlockId({_placeBlock}):
+		send "&8[&6Simple Tech&8]&r &7Belt placement cancelled." to player
+		stop
+	stTryBuildBelt(player, {_start}, {_placeBlock})
+
+on right click on deepslate tile slab:
+	if stIsBeltPart(event-block) is false:
+		stop
+	if stIsBelt(player's tool) is true:
+		stop
+	cancel event
+	stToggleBeltDirection(event-block)
+	stUpdateBeltArrowDisplaysForLine(stBeltLineId(event-block))
+	send "&8[&6Simple Tech&8]&r &aBelt direction changed." to player
+
+on break of deepslate tile slab:
+	if stIsBeltPart(event-block) is false:
+		stop
+	cancel drops
+	stRemoveBeltPart(event-block, true)
+
+every 2 ticks:
+	loop all players:
+		set {_target} to target block of loop-player
+		if {_target} is set:
+			if distance between location of loop-player and location of {_target} <= 7:
+				if stIsBeltPart({_target}) is true:
+					stShowPlayerBeltArrow(loop-player, {_target})
+				else:
+					stClearPlayerBeltArrow(loop-player)
+			else:
+				stClearPlayerBeltArrow(loop-player)
+		else:
+			stClearPlayerBeltArrow(loop-player)
+
+every 1 tick:
+	add 1 to {st.belt.move.tick}
+	loop {st.belt.blocks::*}:
+		set {_belt} to loop-value
+		if {_belt} is not deepslate tile slab:
+			remove {_belt} from {st.belt.blocks::*}
+		else:
+			set {_center} to stBeltTransportLocation({_belt})
+			loop dropped items in radius 0.75 around {_center}:
+				set {_entityId} to "%uuid of loop-entity%"
+				set {_preferredUntil} to {st.belt.preferred::%{_entityId}%::until}
+				set {_preferredBlock} to {st.belt.preferred::%{_entityId}%::block}
+				set {_canMove} to true
+				if {_preferredUntil} is set:
+					if {_preferredUntil} < {st.belt.move.tick}:
+						delete {st.belt.preferred::%{_entityId}%::*}
+					else if {_preferredBlock} is set:
+						if {_preferredBlock} is not stBlockId({_belt}):
+							set {_canMove} to false
+				if {_canMove} is true:
+					if {st.belt.moved::%{_entityId}%} is not {st.belt.move.tick}:
+					set {st.belt.moved::%{_entityId}%} to {st.belt.move.tick}
+					stMoveItemAlongBelt(loop-entity, {_belt})
+
+	loop {st.belt.build.ids::*}:
+		set {_buildId} to loop-value
+		set {_step} to {st.belt.build::%{_buildId}%::step}
+		if {_step} is not set:
+			set {_step} to 1
+		set {_next} to {st.belt.build::%{_buildId}%::parts::%{_step}%}
+		if {_next} is not set:
+			remove {_buildId} from {st.belt.build.ids::*}
+			delete {st.belt.build::%{_buildId}%::*}
+		else:
+			set {_lineId} to {st.belt.build::%{_buildId}%::lineid}
+			if {_lineId} is not set:
+				remove {_buildId} from {st.belt.build.ids::*}
+				delete {st.belt.build::%{_buildId}%::*}
+			else:
+				stPlaceSingleBeltBlock({_next}, {_lineId})
+				stFinishBeltBuildStep({_next})
+				delete {st.belt.build::%{_buildId}%::parts::%{_step}%}
+				add 1 to {_step}
+				set {st.belt.build::%{_buildId}%::step} to {_step}
+
+on quit:
+	delete {st.belt.pending::%uuid of player%}
+	stClearPlayerBeltArrow(player)

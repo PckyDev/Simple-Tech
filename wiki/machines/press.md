@@ -23,6 +23,7 @@
 - The Press can also receive power from a [Water Wheel](water-wheel.md) through a [Cable](../items/cable.md).
 - Automatic power is transferred in small increments over time instead of by manual clicks.
 - Only one Cable can be connected to a Press at once.
+- A [Belt](belt.md) can be placed in front of the Press to carry items into and away from the machine.
 
 ## Power
 - Stores up to `32` power.
@@ -42,5 +43,6 @@
 ## Notes
 - The Press doubles the manual Hammer output for supported recipes.
 - It currently processes dropped items directly in front of the machine.
+- If that front block is a [Belt](belt.md), processed outputs can continue traveling on the Belt.
 - Breaking the Press returns the Press item, and also returns the attached Hand Crank if one is installed.
 - If the Press is connected by Cable, breaking it also returns the Cable.

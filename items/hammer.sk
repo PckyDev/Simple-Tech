@@ -77,6 +77,8 @@ function stCustomCraftingResult(inv: inventory) :: item:
 		return stWaterWheel()
 	if stIsCableRecipe({_inv}) is true:
 		return stCable()
+	if stIsBeltRecipe({_inv}) is true:
+		return stBelt()
 
 function stConsumeCustomCraftingRecipe(inv: inventory):
 	if stIsHammerRecipe({_inv}) is true:
@@ -105,6 +107,9 @@ function stConsumeCustomCraftingRecipe(inv: inventory):
 		stop
 	if stIsCableRecipe({_inv}) is true:
 		stConsumeCableRecipe({_inv})
+		stop
+	if stIsBeltRecipe({_inv}) is true:
+		stConsumeBeltRecipe({_inv})
 
 function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsHammer({_i}) is true:
@@ -120,6 +125,8 @@ function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsWaterWheel({_i}) is true:
 		return true
 	if stIsCable({_i}) is true:
+		return true
+	if stIsBelt({_i}) is true:
 		return true
 	return false
 
