@@ -114,11 +114,24 @@ function stQueuePowerLeadCleanup(loc: location):
 	set {st.power.cleanup::%{_id}%::loc} to {_loc}
 	set {st.power.cleanup::%{_id}%::ticks} to 8
 
+function stClearNearbyPowerAnchors(loc: location):
+	loop entities in radius 8 around {_loc}:
+		if loop-entity is rabbit:
+			if {st.power.anchor::%uuid of loop-entity%} is set:
+				set {st.power.anchor.removing::%uuid of loop-entity%} to true
+				kill loop-entity
+			else if {st.power.anchor.removing::%uuid of loop-entity%} is set:
+				kill loop-entity
+
 function stDisconnectPowerLink(id: text, dropCable: boolean, dropLoc: location):
 	set {_fromId} to {st.power.link::%{_id}%::fromid}
 	set {_toId} to {st.power.link::%{_id}%::toid}
 	set {_from} to {st.power.link::%{_id}%::from}
 	set {_to} to {st.power.link::%{_id}%::to}
+	if {_from} is set:
+		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_from}))
+	if {_to} is set:
+		stClearNearbyPowerAnchors(stMachineCableAnchorLocation({_to}))
 	stClearPowerLinkVisual({_id})
 	remove {_id} from {st.power.links::*}
 	if {_fromId} is set:
@@ -129,10 +142,13 @@ function stDisconnectPowerLink(id: text, dropCable: boolean, dropLoc: location):
 	if {_dropCable} is true:
 		drop stCable() at {_dropLoc}
 	stQueuePowerLeadCleanup({_dropLoc})
+	stClearNearbyPowerAnchors({_dropLoc})
 	if {_from} is set:
 		stQueuePowerLeadCleanup(location of {_from})
+		stClearNearbyPowerAnchors(location of {_from})
 	if {_to} is set:
 		stQueuePowerLeadCleanup(location of {_to})
+		stClearNearbyPowerAnchors(location of {_to})
 
 function stDisconnectMachinePower(b: block, dropCable: boolean):
 	set {_machineId} to stPowerMachineId({_b})

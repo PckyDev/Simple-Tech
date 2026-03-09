@@ -117,6 +117,8 @@ function stWaterWheelPreferredSide(support: block, p: player) :: text:
 function stCanPlaceWaterWheel(base: block, support: block, side: text) :: boolean:
 	if {_support} is air:
 		return false
+	if {_support} is water:
+		return false
 	set {_water} to stOffsetSideBlock({_support}, {_side}, 1)
 	set {_barrel} to stOffsetSideBlock({_base}, {_side}, 1)
 	set {_trapdoor} to stOffsetSideBlock({_base}, {_side}, 2)
@@ -186,6 +188,13 @@ function stClearWaterWheelData(id: text):
 	delete {st.waterwheel.machine::%{_id}%::*}
 	delete {st.waterwheel.breaking::%{_id}%}
 
+function stQueueWaterWheelVisualDropCleanup(loc: location):
+	add 1 to {st.waterwheel.cleanup.next}
+	set {_id} to {st.waterwheel.cleanup.next}
+	add {_id} to {st.waterwheel.cleanup.ids::*}
+	set {st.waterwheel.cleanup::%{_id}%::loc} to {_loc}
+	set {st.waterwheel.cleanup::%{_id}%::ticks} to 8
+
 function stBreakWaterWheel(id: text, dropLoc: location):
 	if {st.waterwheel.breaking::%{_id}%} is set:
 		stop
@@ -193,14 +202,35 @@ function stBreakWaterWheel(id: text, dropLoc: location):
 	set {_stair} to {st.waterwheel.machine::%{_id}%::stair}
 	set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
 	set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
+	stQueueWaterWheelVisualDropCleanup({_dropLoc})
+	if {_stair} is set:
+		stQueueWaterWheelVisualDropCleanup(location of {_stair})
 	if {_stair} is set:
 		set block at location of {_stair} to air
 	if {_barrel} is set:
+		stQueueWaterWheelVisualDropCleanup(location of {_barrel})
+	if {_barrel} is set:
 		set block at location of {_barrel} to air
+	if {_trapdoor} is set:
+		stQueueWaterWheelVisualDropCleanup(location of {_trapdoor})
 	if {_trapdoor} is set:
 		set block at location of {_trapdoor} to air
 	drop stWaterWheel() at {_dropLoc}
 	stClearWaterWheelData({_id})
+
+function stWaterWheelDropLocation(id: text) :: location:
+	set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
+	if {_barrel} is set:
+		return location of {_barrel}
+	set {_support} to {st.waterwheel.machine::%{_id}%::support}
+	if {_support} is set:
+		return location of {_support}
+	set {_stair} to {st.waterwheel.machine::%{_id}%::stair}
+	if {_stair} is set:
+		return location of {_stair}
+	set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
+	if {_trapdoor} is set:
+		return location of {_trapdoor}
 
 function stWaterWheelStatusText(b: block) :: text:
 	set {_support} to stWaterWheelSupportBlockFromPart({_b})
@@ -261,10 +291,37 @@ every 10 ticks:
 		set {_barrel} to {st.waterwheel.machine::%{_id}%::barrel}
 		set {_trapdoor} to {st.waterwheel.machine::%{_id}%::trapdoor}
 		if {_support} is not set:
-			stClearWaterWheelData({_id})
+			stBreakWaterWheel({_id}, stWaterWheelDropLocation({_id}))
+		else if {_support} is air:
+			stBreakWaterWheel({_id}, stWaterWheelDropLocation({_id}))
 		else if {_stair} is not spruce stairs:
-			stClearWaterWheelData({_id})
+			stBreakWaterWheel({_id}, stWaterWheelDropLocation({_id}))
 		else if {_barrel} is not barrel:
-			stClearWaterWheelData({_id})
+			stBreakWaterWheel({_id}, stWaterWheelDropLocation({_id}))
 		else if {_trapdoor} is not spruce trapdoor:
-			stClearWaterWheelData({_id})
+			stBreakWaterWheel({_id}, stWaterWheelDropLocation({_id}))
+
+every 1 tick:
+	loop {st.waterwheel.cleanup.ids::*}:
+		set {_cleanupId} to loop-value
+		set {_loc} to {st.waterwheel.cleanup::%{_cleanupId}%::loc}
+		set {_ticks} to {st.waterwheel.cleanup::%{_cleanupId}%::ticks}
+		if {_loc} is not set:
+			remove {_cleanupId} from {st.waterwheel.cleanup.ids::*}
+			delete {st.waterwheel.cleanup::%{_cleanupId}%::*}
+		else:
+			loop dropped items in radius 4 around {_loc}:
+				set {_stack} to item of loop-entity
+				if type of {_stack} is barrel:
+					if stIsWaterWheel({_stack}) is false:
+						kill loop-entity
+				else if type of {_stack} is spruce stairs:
+					kill loop-entity
+				else if type of {_stack} is spruce trapdoor:
+					kill loop-entity
+			subtract 1 from {_ticks}
+			if {_ticks} <= 0:
+				remove {_cleanupId} from {st.waterwheel.cleanup.ids::*}
+				delete {st.waterwheel.cleanup::%{_cleanupId}%::*}
+			else:
+				set {st.waterwheel.cleanup::%{_cleanupId}%::ticks} to {_ticks}
