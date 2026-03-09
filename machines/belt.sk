@@ -83,8 +83,41 @@ function stBeltDirectionFromPoints(start: block, finish: block, p: player) :: te
 		return "north"
 	return stHorizontalSideName({_p})
 
-function stPlaceSingleBeltBlock(b: block, lineId: text):
-	set block at location of {_b} to deepslate tile slab
+function stBeltForwardDirection(first: block, last: block) :: text:
+	set {_firstLoc} to location of {_first}
+	set {_lastLoc} to location of {_last}
+	if x-coordinate of {_lastLoc} > x-coordinate of {_firstLoc}:
+		return "east"
+	if x-coordinate of {_lastLoc} < x-coordinate of {_firstLoc}:
+		return "west"
+	if z-coordinate of {_lastLoc} > z-coordinate of {_firstLoc}:
+		return "south"
+	return "north"
+
+function stBeltMiddleBlockData() :: text:
+	return "deepslate_tile_slab[type=top]"
+
+function stPlaceSingleBeltBlock(b: block, lineId: text, partKind: text, facing: text):
+	if {_partKind} is "start":
+		if {_facing} is "north":
+			set block data of {_b} to deepslate_tile_stairs[facing=north;half=top;shape=straight]
+		else if {_facing} is "south":
+			set block data of {_b} to deepslate_tile_stairs[facing=south;half=top;shape=straight]
+		else if {_facing} is "west":
+			set block data of {_b} to deepslate_tile_stairs[facing=west;half=top;shape=straight]
+		else:
+			set block data of {_b} to deepslate_tile_stairs[facing=east;half=top;shape=straight]
+	else if {_partKind} is "end":
+		if {_facing} is "north":
+			set block data of {_b} to deepslate_tile_stairs[facing=north;half=top;shape=straight]
+		else if {_facing} is "south":
+			set block data of {_b} to deepslate_tile_stairs[facing=south;half=top;shape=straight]
+		else if {_facing} is "west":
+			set block data of {_b} to deepslate_tile_stairs[facing=west;half=top;shape=straight]
+		else:
+			set block data of {_b} to deepslate_tile_stairs[facing=east;half=top;shape=straight]
+	else:
+		set block data of {_b} to deepslate_tile_slab[type=top]
 	set {st.belt.part::%stBlockId({_b})%} to {_lineId}
 	add {_b} to {st.belt.line::%{_lineId}%::blocks::*}
 	add {_b} to {st.belt.blocks::*}
@@ -101,6 +134,11 @@ function stQueueBeltBuildPart(buildId: text, b: block):
 	add 1 to {st.belt.build::%{_buildId}%::count}
 	set {_index} to {st.belt.build::%{_buildId}%::count}
 	set {st.belt.build::%{_buildId}%::parts::%{_index}%} to {_b}
+
+function stQueueBeltBuildData(buildId: text, partKind: text, facing: text):
+	set {_index} to {st.belt.build::%{_buildId}%::count}
+	set {st.belt.build::%{_buildId}%::kind::%{_index}%} to {_partKind}
+	set {st.belt.build::%{_buildId}%::facing::%{_index}%} to {_facing}
 
 function stFinishBeltBuildStep(b: block):
 	set {_loc} to stBeltArrowLocation({_b})
@@ -180,18 +218,49 @@ function stTryBuildBelt(p: player, start: block, finish: block) :: boolean:
 	add {_buildId} to {st.belt.build.ids::*}
 	set {st.belt.build::%{_buildId}%::lineid} to {_lineId}
 	set {st.belt.build::%{_buildId}%::step} to 1
+	set {_firstPlaced} to false
 	if {_sameX} is true:
+		set {_firstLoc} to location of {_start}
+		set z-coordinate of {_firstLoc} to {_minZ}
+		set {_lastLoc} to location of {_start}
+		set z-coordinate of {_lastLoc} to {_maxZ}
+		set {_firstBlock} to block at {_firstLoc}
+		set {_lastBlock} to block at {_lastLoc}
+		set {_forward} to stBeltForwardDirection({_firstBlock}, {_lastBlock})
+		set {_backward} to stOppositeHorizontal({_forward})
 		loop {_maxZ} - {_minZ} + 1 times:
 			set {_z} to {_minZ} + loop-number - 1
 			set {_loc} to location of {_start}
 			set z-coordinate of {_loc} to {_z}
-			stQueueBeltBuildPart({_buildId}, block at {_loc})
+			set {_block} to block at {_loc}
+			stQueueBeltBuildPart({_buildId}, {_block})
+			if {_z} = {_minZ}:
+				stQueueBeltBuildData({_buildId}, "start", {_forward})
+			else if {_z} = {_maxZ}:
+				stQueueBeltBuildData({_buildId}, "end", {_backward})
+			else:
+				stQueueBeltBuildData({_buildId}, "middle", "")
 	else:
+		set {_firstLoc} to location of {_start}
+		set x-coordinate of {_firstLoc} to {_minX}
+		set {_lastLoc} to location of {_start}
+		set x-coordinate of {_lastLoc} to {_maxX}
+		set {_firstBlock} to block at {_firstLoc}
+		set {_lastBlock} to block at {_lastLoc}
+		set {_forward} to stBeltForwardDirection({_firstBlock}, {_lastBlock})
+		set {_backward} to stOppositeHorizontal({_forward})
 		loop {_maxX} - {_minX} + 1 times:
 			set {_x} to {_minX} + loop-number - 1
 			set {_loc} to location of {_start}
 			set x-coordinate of {_loc} to {_x}
-			stQueueBeltBuildPart({_buildId}, block at {_loc})
+			set {_block} to block at {_loc}
+			stQueueBeltBuildPart({_buildId}, {_block})
+			if {_x} = {_minX}:
+				stQueueBeltBuildData({_buildId}, "start", {_forward})
+			else if {_x} = {_maxX}:
+				stQueueBeltBuildData({_buildId}, "end", {_backward})
+			else:
+				stQueueBeltBuildData({_buildId}, "middle", "")
 	stConsumeHeldBelts({_p}, {_count})
 	set {st.belt.build::%{_buildId}%::owner} to uuid of {_p}
 	send "&8[&6Simple Tech&8]&r &aBuilding a belt with %{_count}% parts." to {_p}
@@ -237,7 +306,7 @@ function stBeltOffsetBlock(b: block, direction: text, distance: number) :: block
 function stBeltTransportLocation(b: block) :: location:
 	set {_loc} to location of {_b}
 	# add 0.5 to x-coordinate of {_loc}
-	add 0.35 to y-coordinate of {_loc}
+	add 0.55 to y-coordinate of {_loc}
 	# add 0.5 to z-coordinate of {_loc}
 	return {_loc}
 
@@ -345,7 +414,7 @@ function stBeltArrowText(direction: text) :: text:
 function stBeltArrowLocation(b: block) :: location:
 	set {_loc} to location of {_b}
 	# add 0.1 to x-coordinate of {_loc}
-	add 0.05 to y-coordinate of {_loc}
+	add 0.51 to y-coordinate of {_loc}
 	add 0.275 to z-coordinate of {_loc}
 	set yaw of {_loc} to 0
 	set pitch of {_loc} to -90
@@ -404,6 +473,10 @@ on place of deepslate tile slab:
 	if stIsBelt(item) is true:
 		cancel event
 
+on place of deepslate tile stairs:
+	if stIsBelt(item) is true:
+		cancel event
+
 on right click:
 	if event-block is not set:
 		stop
@@ -423,7 +496,9 @@ on right click:
 		stop
 	stTryBuildBelt(player, {_start}, {_placeBlock})
 
-on right click on deepslate tile slab:
+on right click:
+	if event-block is not set:
+		stop
 	if stIsBeltPart(event-block) is false:
 		stop
 	if stIsBelt(player's tool) is true:
@@ -434,6 +509,12 @@ on right click on deepslate tile slab:
 	send "&8[&6Simple Tech&8]&r &aBelt direction changed." to player
 
 on break of deepslate tile slab:
+	if stIsBeltPart(event-block) is false:
+		stop
+	cancel drops
+	stRemoveBeltPart(event-block, true)
+
+on break of deepslate tile stairs:
 	if stIsBeltPart(event-block) is false:
 		stop
 	cancel drops
@@ -457,7 +538,7 @@ every 1 tick:
 	add 1 to {st.belt.move.tick}
 	loop {st.belt.blocks::*}:
 		set {_belt} to loop-value
-		if {_belt} is not deepslate tile slab:
+		if stIsBeltPart({_belt}) is false:
 			remove {_belt} from {st.belt.blocks::*}
 		else:
 			set {_center} to stBeltTransportLocation({_belt})
@@ -474,8 +555,8 @@ every 1 tick:
 							set {_canMove} to false
 				if {_canMove} is true:
 					if {st.belt.moved::%{_entityId}%} is not {st.belt.move.tick}:
-					set {st.belt.moved::%{_entityId}%} to {st.belt.move.tick}
-					stMoveItemAlongBelt(loop-entity, {_belt})
+						set {st.belt.moved::%{_entityId}%} to {st.belt.move.tick}
+						stMoveItemAlongBelt(loop-entity, {_belt})
 
 	loop {st.belt.build.ids::*}:
 		set {_buildId} to loop-value
@@ -488,13 +569,17 @@ every 1 tick:
 			delete {st.belt.build::%{_buildId}%::*}
 		else:
 			set {_lineId} to {st.belt.build::%{_buildId}%::lineid}
+			set {_kind} to {st.belt.build::%{_buildId}%::kind::%{_step}%}
+			set {_facing} to {st.belt.build::%{_buildId}%::facing::%{_step}%}
 			if {_lineId} is not set:
 				remove {_buildId} from {st.belt.build.ids::*}
 				delete {st.belt.build::%{_buildId}%::*}
 			else:
-				stPlaceSingleBeltBlock({_next}, {_lineId})
+				stPlaceSingleBeltBlock({_next}, {_lineId}, {_kind}, {_facing})
 				stFinishBeltBuildStep({_next})
 				delete {st.belt.build::%{_buildId}%::parts::%{_step}%}
+				delete {st.belt.build::%{_buildId}%::kind::%{_step}%}
+				delete {st.belt.build::%{_buildId}%::facing::%{_step}%}
 				add 1 to {_step}
 				set {st.belt.build::%{_buildId}%::step} to {_step}
 
