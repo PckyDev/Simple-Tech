@@ -16,24 +16,6 @@
 1. Place the Encased Fan on a block.
 2. The machine uses the direction you are looking to choose its output face.
 3. Looking up or down while placing can make the fan blow vertically.
-# Encased Fan
-
-## Summary
-- **Tier:** Mechanical
-- **Base item:** Copper Bulb
-- **Purpose:** Produces directional air when powered
-
-## Crafting Recipe
-```text
-[Empty]           [Spruce Trapdoor] [Empty]
-[Spruce Trapdoor] [Copper Frame]    [Spruce Trapdoor]
-[Empty]           [Spruce Trapdoor] [Empty]
-```
-
-## Placement
-1. Place the Encased Fan on a block.
-2. The machine uses the direction you are looking to choose its output face.
-3. Looking up or down while placing can make the fan blow vertically.
 
 ## Structure
 - The center block is the machine core.
