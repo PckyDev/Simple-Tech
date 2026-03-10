@@ -147,6 +147,28 @@ function stSpawnCableAnchor(loc: location) :: entity:
 	set {_rabbit} to last spawned entity
 	return {_rabbit}
 
+function stRemovePowerAnchorEntity(anchor: entity, linkId: text):
+	if {_anchor} is not set:
+		stop
+	stQueuePowerLeadCleanup(location of {_anchor})
+	set {st.power.anchor.removing::%uuid of {_anchor}%} to {_linkId}
+	delete {st.power.anchor::%uuid of {_anchor}%}
+	kill {_anchor}
+
+function stRemovePowerAnchorByUuid(anchorUuid: text, loc: location, linkId: text):
+	if {_anchorUuid} is not set:
+		stop
+	if {_loc} is not set:
+		stop
+	loop entities in radius 2 around {_loc}:
+		if loop-entity is rabbit:
+			if "%uuid of loop-entity%" = {_anchorUuid}:
+				stQueuePowerLeadCleanup(location of loop-entity)
+				set {st.power.anchor.removing::%uuid of loop-entity%} to {_linkId}
+				delete {st.power.anchor::%uuid of loop-entity%}
+				kill loop-entity
+				stop
+
 function stCreatePowerLinkVisual(id: text):
 	set {_from} to {st.power.link::%{_id}%::from}
 	set {_to} to {st.power.link::%{_id}%::to}
@@ -156,14 +178,28 @@ function stCreatePowerLinkVisual(id: text):
 		stop
 	set {_anchor1} to {st.power.link::%{_id}%::anchor1}
 	set {_anchor2} to {st.power.link::%{_id}%::anchor2}
+	set {_oldLoc1} to {st.power.link::%{_id}%::anchorloc1}
+	set {_oldLoc2} to {st.power.link::%{_id}%::anchorloc2}
+	set {_oldUuid1} to {st.power.link::%{_id}%::anchoruuid1}
+	set {_oldUuid2} to {st.power.link::%{_id}%::anchoruuid2}
 	if {_anchor1} is set:
-		kill {_anchor1}
+		stRemovePowerAnchorEntity({_anchor1}, {_id})
+	else:
+		stRemovePowerAnchorByUuid({_oldUuid1}, {_oldLoc1}, {_id})
 	if {_anchor2} is set:
-		kill {_anchor2}
-	set {_anchor1} to stSpawnCableAnchor(stMachineCableAnchorLocation({_from}))
-	set {_anchor2} to stSpawnCableAnchor(stMachineCableAnchorLocation({_to}))
+		stRemovePowerAnchorEntity({_anchor2}, {_id})
+	else:
+		stRemovePowerAnchorByUuid({_oldUuid2}, {_oldLoc2}, {_id})
+	set {_loc1} to stMachineCableAnchorLocation({_from})
+	set {_loc2} to stMachineCableAnchorLocation({_to})
+	set {st.power.link::%{_id}%::anchorloc1} to {_loc1}
+	set {st.power.link::%{_id}%::anchorloc2} to {_loc2}
+	set {_anchor1} to stSpawnCableAnchor({_loc1})
+	set {_anchor2} to stSpawnCableAnchor({_loc2})
 	set {st.power.link::%{_id}%::anchor1} to {_anchor1}
 	set {st.power.link::%{_id}%::anchor2} to {_anchor2}
+	set {st.power.link::%{_id}%::anchoruuid1} to "%uuid of {_anchor1}%"
+	set {st.power.link::%{_id}%::anchoruuid2} to "%uuid of {_anchor2}%"
 	set {st.power.anchor::%uuid of {_anchor1}%} to {_id}
 	set {st.power.anchor::%uuid of {_anchor2}%} to {_id}
 	leash {_anchor1} to {_anchor2}
@@ -171,18 +207,26 @@ function stCreatePowerLinkVisual(id: text):
 function stClearPowerLinkVisual(id: text):
 	set {_anchor1} to {st.power.link::%{_id}%::anchor1}
 	set {_anchor2} to {st.power.link::%{_id}%::anchor2}
+	set {_loc1} to {st.power.link::%{_id}%::anchorloc1}
+	set {_loc2} to {st.power.link::%{_id}%::anchorloc2}
+	set {_uuid1} to {st.power.link::%{_id}%::anchoruuid1}
+	set {_uuid2} to {st.power.link::%{_id}%::anchoruuid2}
 	if {_anchor1} is set:
-		stQueuePowerLeadCleanup(location of {_anchor1})
-		set {st.power.anchor.removing::%uuid of {_anchor1}%} to {_id}
-		kill {_anchor1}
-		delete {st.power.anchor::%uuid of {_anchor1}%}
+		stRemovePowerAnchorEntity({_anchor1}, {_id})
+	else if {_loc1} is set:
+		stQueuePowerLeadCleanup({_loc1})
+	stRemovePowerAnchorByUuid({_uuid1}, {_loc1}, {_id})
 	if {_anchor2} is set:
-		stQueuePowerLeadCleanup(location of {_anchor2})
-		set {st.power.anchor.removing::%uuid of {_anchor2}%} to {_id}
-		kill {_anchor2}
-		delete {st.power.anchor::%uuid of {_anchor2}%}
+		stRemovePowerAnchorEntity({_anchor2}, {_id})
+	else if {_loc2} is set:
+		stQueuePowerLeadCleanup({_loc2})
+	stRemovePowerAnchorByUuid({_uuid2}, {_loc2}, {_id})
 	delete {st.power.link::%{_id}%::anchor1}
 	delete {st.power.link::%{_id}%::anchor2}
+	delete {st.power.link::%{_id}%::anchorloc1}
+	delete {st.power.link::%{_id}%::anchorloc2}
+	delete {st.power.link::%{_id}%::anchoruuid1}
+	delete {st.power.link::%{_id}%::anchoruuid2}
 
 function stQueuePowerLeadCleanup(loc: location):
 	add 1 to {st.power.cleanup.next}
@@ -484,9 +528,16 @@ every 10 ticks:
 		else if stPowerMachineId({_to}) is not set:
 			stDisconnectPowerLink({_linkId}, true, location of {_to})
 		else:
+			set {_rebuild} to false
 			if {_anchor1} is not set:
-				stCreatePowerLinkVisual({_linkId})
-			else if {_anchor2} is not set:
+				set {_rebuild} to true
+			else if {_anchor1} is not valid:
+				set {_rebuild} to true
+			if {_anchor2} is not set:
+				set {_rebuild} to true
+			else if {_anchor2} is not valid:
+				set {_rebuild} to true
+			if {_rebuild} is true:
 				stCreatePowerLinkVisual({_linkId})
 
 	loop {st.waterwheel.ids::*}:
