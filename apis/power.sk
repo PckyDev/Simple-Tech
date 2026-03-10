@@ -127,6 +127,20 @@ function stMachineAcceptPower(b: block, amount: number) :: boolean:
 		return stAddEncasedFanPower({_b}, {_amount})
 	return false
 
+function stMachineRequestedPower(b: block) :: number:
+	if stIsPlacedPress({_b}) is true:
+		set {_id} to stPressId({_b})
+		set {_stored} to {st.press.power::%{_id}%}
+		if {_stored} is not set:
+			set {_stored} to 0
+		set {_need} to stPressRequiredPower({_b}) - {_stored}
+		if {_need} < 0:
+			set {_need} to 0
+		return {_need}
+	if stIsEncasedFanPart({_b}) is true:
+		return stEncasedFanRequestedPower({_b})
+	return 0
+
 function stMachineCableAnchorLocation(b: block) :: location:
 	set {_loc} to location of {_b}
 	if stIsCablePolePort({_b}) is true:
@@ -380,13 +394,41 @@ function stTransferPowerFromSource(b: block):
 		if loop-value is not {_sourceId}:
 			set {_receiver} to stPowerNodeBlockFromId(loop-value)
 			if stMachineCanReceivePower({_receiver}) is true:
-				add 1 to {_receiverCount}
-				set {_receivers::%{_receiverCount}%} to {_receiver}
+				set {_demand} to stMachineRequestedPower({_receiver})
+				if {_demand} > 0:
+					add 1 to {_receiverCount}
+					set {_receivers::%{_receiverCount}%} to {_receiver}
+					set {_demands::%{_receiverCount}%} to {_demand}
 	if {_receiverCount} <= 0:
 		stop
-	set {_share} to {_rate} / {_receiverCount}
-	loop {_receivers::*}:
-		stMachineAcceptPower(loop-value, {_share})
+	set {_remainingRate} to {_rate}
+	while {_remainingRate} > 0.0001:
+		delete {_active::*}
+		set {_activeCount} to 0
+		loop {_receivers::*}:
+			set {_demand} to {_demands::%loop-index%}
+			if {_demand} > 0.0001:
+				add 1 to {_activeCount}
+				set {_active::%{_activeCount}%} to loop-index
+		if {_activeCount} <= 0:
+			stop
+		set {_share} to {_remainingRate} / {_activeCount}
+		if {_share} <= 0.0001:
+			stop
+		set {_distributedThisPass} to 0
+		loop {_active::*}:
+			set {_receiverIndex} to loop-value
+			set {_demand} to {_demands::%{_receiverIndex}%}
+			set {_give} to {_share}
+			if {_give} > {_demand}:
+				set {_give} to {_demand}
+			if {_give} > 0.0001:
+				stMachineAcceptPower({_receivers::%{_receiverIndex}%}, {_give})
+				subtract {_give} from {_remainingRate}
+				subtract {_give} from {_demands::%{_receiverIndex}%}
+				add {_give} to {_distributedThisPass}
+		if {_distributedThisPass} <= 0.0001:
+			stop
 
 function stConsumeOneCableFromTool(p: player):
 	set {_tool} to {_p}'s tool

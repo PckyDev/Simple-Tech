@@ -80,6 +80,33 @@ function stEncasedFanFluidItem(id: text) :: item:
 function stEncasedFanGuiTitle() :: text:
 	return "&8Encased Fan"
 
+function stEncasedFanConfiguredRange(id: text) :: number:
+	set {_range} to {st.fan::%{_id}%::range.limit}
+	if {_range} is not set:
+		set {_range} to 5
+	if {_range} < 1:
+		set {_range} to 1
+	if {_range} > 5:
+		set {_range} to 5
+	set {st.fan::%{_id}%::range.limit} to {_range}
+	return {_range}
+
+function stSetEncasedFanConfiguredRange(id: text, range: number):
+	set {_limit} to {_range}
+	if {_limit} < 1:
+		set {_limit} to 1
+	if {_limit} > 5:
+		set {_limit} to 5
+	set {st.fan::%{_id}%::range.limit} to {_limit}
+
+function stBuildEncasedFanGuiControls(inv: inventory, id: text):
+	set slot 0 of {_inv} to red stained glass pane named "&cDecrease max range"
+	set {_display} to white stained glass pane named "&fMax Range"
+	set amount of {_display} to stEncasedFanConfiguredRange({_id})
+	set lore of {_display} to "&7Limits how far this fan may operate."
+	set slot 1 of {_inv} to {_display}
+	set slot 2 of {_inv} to lime stained glass pane named "&aIncrease max range"
+
 function stEncasedFanPanelBlock(base: block, side: text) :: block:
 	return stOffsetSideBlock({_base}, {_side}, 1)
 
@@ -403,6 +430,7 @@ function stOpenEncasedFanGui(p: player, b: block):
 	set {_inv} to chest inventory with 1 row named stEncasedFanGuiTitle()
 	loop 9 times:
 		set slot (loop-number - 1) of {_inv} to gray stained glass pane named " "
+	stBuildEncasedFanGuiControls({_inv}, {_id})
 	set slot 4 of {_inv} to air
 	set {_fluid} to stEncasedFanFluid({_id})
 	if {_fluid} is "water":
@@ -417,8 +445,13 @@ function stValidateEncasedFanGui(p: player, inv: inventory, closeGui: boolean):
 	if {_id} is not set:
 		stop
 	loop 9 times:
-		if loop-number - 1 is not 4:
-			set slot (loop-number - 1) of {_inv} to gray stained glass pane named " "
+		set {_slotIndex} to loop-number - 1
+		if {_slotIndex} is not 0:
+			if {_slotIndex} is not 1:
+				if {_slotIndex} is not 2:
+					if {_slotIndex} is not 4:
+						set slot {_slotIndex} of {_inv} to gray stained glass pane named " "
+	stBuildEncasedFanGuiControls({_inv}, {_id})
 	set {_slot} to slot 4 of {_inv}
 	if {_slot} is air:
 		set {st.fan::%{_id}%::fluid} to "empty"
@@ -455,10 +488,13 @@ function stEncasedFanStrength(id: text) :: number:
 	set {_strength} to stEncasedFanCurrentFlow({_id})
 	if {_strength} <= 0:
 		return 0
+	set {_limit} to stEncasedFanConfiguredRange({_id})
 	if {_strength} < 0.35:
 		set {_strength} to 0.35
 	if {_strength} > 5:
 		set {_strength} to 5
+	if {_strength} > {_limit}:
+		set {_strength} to {_limit}
 	return {_strength}
 
 function stIsEncasedFanPowered(b: block) :: boolean:
@@ -477,6 +513,18 @@ function stAddEncasedFanPower(b: block, amount: number) :: boolean:
 		set {st.fan::%{_id}%::flow.pending} to 0
 	add {_amount} to {st.fan::%{_id}%::flow.pending}
 	return true
+
+function stEncasedFanRequestedPower(b: block) :: number:
+	set {_base} to stEncasedFanMachineAnchorBlock({_b})
+	set {_id} to stEncasedFanId({_base})
+	set {_need} to stEncasedFanConfiguredRange({_id})
+	set {_pending} to {st.fan::%{_id}%::flow.pending}
+	if {_pending} is not set:
+		set {_pending} to 0
+	subtract {_pending} from {_need}
+	if {_need} < 0:
+		set {_need} to 0
+	return {_need}
 
 function stEncasedFanParticleVelocity(side: text, strength: number) :: vector:
 	set {_speed} to 0.012 + ({_strength} * 0.008)
@@ -794,7 +842,7 @@ function stHeatItemWithEncasedFan(e: entity, strength: number):
 	set {st.fan.smelt::%{_entityId}%::ttl} to 60
 	if {st.fan.smelt::%{_entityId}%::progress} is not set:
 		set {st.fan.smelt::%{_entityId}%::progress} to 0
-	add {_strength} * 32 to {st.fan.smelt::%{_entityId}%::progress}
+	add {_strength} * 8 to {st.fan.smelt::%{_entityId}%::progress}
 	if {st.fan.smelt::%{_entityId}%::progress} < {_cookTime}:
 		stop
 	set {st.fan.smelt::%{_entityId}%::progress} to {_cookTime}
@@ -873,6 +921,7 @@ function stEncasedFanStatusText(b: block) :: text:
 	set {_air} to stEncasedFanAirType({_id})
 	set {_strength} to stEncasedFanStrength({_id})
 	set {_range} to stEncasedFanRange({_strength})
+	set {_limit} to stEncasedFanConfiguredRange({_id})
 	if {_air} is "wet":
 		set {_airLabel} to "&bWet air"
 	else if {_air} is "hot":
@@ -880,8 +929,8 @@ function stEncasedFanStatusText(b: block) :: text:
 	else:
 		set {_airLabel} to "&fNormal air"
 	if stIsEncasedFanPowered({_base}) is true:
-		return "&aBlowing • %{_airLabel}% • &eRange %{_range}%"
-	return "&7Idle • %{_airLabel}%"
+		return "&aBlowing • %{_airLabel}% • &eRange %{_range}%&7/&e%{_limit}%"
+	return "&7Idle • %{_airLabel}% • &7Cap %{_limit}%"
 
 function stEncasedFanReservedOwnerId(b: block) :: text:
 	set {_base} to block below {_b}
@@ -1027,6 +1076,22 @@ on inventory click:
 		cancel event
 		stop
 	if raw index of clicked slot < 9:
+		set {_id} to {st.fan.gui.open::%uuid of player%}
+		if raw index of clicked slot is 0:
+			cancel event
+			if {_id} is set:
+				stSetEncasedFanConfiguredRange({_id}, stEncasedFanConfiguredRange({_id}) - 1)
+				stValidateEncasedFanGui(player, {_top}, false)
+			stop
+		if raw index of clicked slot is 2:
+			cancel event
+			if {_id} is set:
+				stSetEncasedFanConfiguredRange({_id}, stEncasedFanConfiguredRange({_id}) + 1)
+				stValidateEncasedFanGui(player, {_top}, false)
+			stop
+		if raw index of clicked slot is 1:
+			cancel event
+			stop
 		if raw index of clicked slot is not 4:
 			cancel event
 			stop
