@@ -751,9 +751,23 @@ function stEncasedFanCookTime(i: item) :: number:
 		return stEncasedFanFallbackCookTime({_i})
 	return {_time}
 
+function stEncasedFanWetResult(i: item) :: item:
+	if {_i} is dirt:
+		return mud
+
+function stEncasedFanWetTime(i: item) :: number:
+	set {_result} to stEncasedFanWetResult({_i})
+	if {_result} is set:
+		return 100
+	return 0
+
 function stClearEncasedFanSmeltTracking(id: text):
 	remove {_id} from {st.fan.smelt.ids::*}
 	delete {st.fan.smelt::%{_id}%::*}
+
+function stClearEncasedFanWetTracking(id: text):
+	remove {_id} from {st.fan.wet.ids::*}
+	delete {st.fan.wet::%{_id}%::*}
 
 function stHeatItemWithEncasedFan(e: entity, strength: number):
 	if {_e} is not set:
@@ -801,6 +815,57 @@ function stHeatItemWithEncasedFan(e: entity, strength: number):
 	draw 6 flame particles with a velocity of vector(0, 0.02, 0) at {_loc}
 	draw 3 smoke particles with a velocity of vector(0, 0.02, 0) at {_loc}
 	stClearEncasedFanSmeltTracking({_entityId})
+
+function stSoakItemWithEncasedFan(e: entity, strength: number):
+	if {_e} is not set:
+		stop
+	set {_stack} to item of {_e}
+	if {_stack} is not set:
+		stop
+	set {_result} to stEncasedFanWetResult({_stack})
+	set {_processTime} to stEncasedFanWetTime({_stack})
+	set {_entityId} to "%uuid of {_e}%"
+	if {_result} is not set:
+		stClearEncasedFanWetTracking({_entityId})
+		stop
+	if {_processTime} <= 0:
+		stClearEncasedFanWetTracking({_entityId})
+		stop
+	set {_key} to stEncasedFanCookRecipeKey({_stack})
+	if {st.fan.wet::%{_entityId}%::listed} is not true:
+		set {st.fan.wet::%{_entityId}%::listed} to true
+		add {_entityId} to {st.fan.wet.ids::*}
+	if {st.fan.wet::%{_entityId}%::key} is not {_key}:
+		set {st.fan.wet::%{_entityId}%::key} to {_key}
+		set {st.fan.wet::%{_entityId}%::progress} to 0
+	set {st.fan.wet::%{_entityId}%::ttl} to 60
+	if {st.fan.wet::%{_entityId}%::progress} is not set:
+		set {st.fan.wet::%{_entityId}%::progress} to 0
+	add {_strength} * 8 to {st.fan.wet::%{_entityId}%::progress}
+	if {st.fan.wet::%{_entityId}%::progress} < {_processTime}:
+		stop
+	set {_current} to item of {_e}
+	if {_current} is not set:
+		stClearEncasedFanWetTracking({_entityId})
+		stop
+	if stEncasedFanCookRecipeKey({_current}) is not {_key}:
+		set {st.fan.wet::%{_entityId}%::key} to stEncasedFanCookRecipeKey({_current})
+		set {st.fan.wet::%{_entityId}%::progress} to 0
+		stop
+	set {_loc} to location of {_e}
+	set {_velocity} to velocity of {_e}
+	set {_output} to {_result}
+	set amount of {_output} to amount of {_current}
+	set item of {_e} to {_output}
+	set velocity of {_e} to {_velocity}
+	loop 6 times:
+		set {_dropLoc} to {_loc}
+		add random number between -0.15 and 0.15 to x-coordinate of {_dropLoc}
+		add random number between -0.15 and 0.15 to y-coordinate of {_dropLoc}
+		add random number between -0.15 and 0.15 to z-coordinate of {_dropLoc}
+		draw 1 splash particle at {_dropLoc}
+		draw 1 dripping water particle at {_dropLoc}
+	stClearEncasedFanWetTracking({_entityId})
 
 function stEncasedFanStatusText(b: block) :: text:
 	set {_base} to stEncasedFanMachineAnchorBlock({_b})
@@ -1043,8 +1108,20 @@ every 4 ticks:
 				add loop-value to {_smeltCleanup::*}
 	loop {_smeltCleanup::*}:
 		stClearEncasedFanSmeltTracking(loop-value)
+	delete {_wetCleanup::*}
+	loop {st.fan.wet.ids::*}:
+		if {st.fan.wet::%loop-value%::ttl} is not set:
+			add loop-value to {_wetCleanup::*}
+		else:
+			subtract 4 from {st.fan.wet::%loop-value%::ttl}
+			if {st.fan.wet::%loop-value%::ttl} <= 0:
+				add loop-value to {_wetCleanup::*}
+	loop {_wetCleanup::*}:
+		stClearEncasedFanWetTracking(loop-value)
 	delete {_hotHeat::*}
 	delete {_hotEntity::*}
+	delete {_wetSoak::*}
+	delete {_wetEntity::*}
 	loop {st.fan.ids::*}:
 		set {_id} to loop-value
 		set {_base} to {st.fan::%{_id}%::base}
@@ -1076,6 +1153,14 @@ every 4 ticks:
 								add {_strength} to {_hotHeat::%{_entityId}%}
 								set {_hotEntity::%{_entityId}%} to loop-entity
 					if {_air} is "wet":
+						loop dropped items in radius 0.85 around {_loc}:
+							set {_entityId} to "%uuid of loop-entity%"
+							if {_fanHeated::%{_entityId}%} is not true:
+								set {_fanHeated::%{_entityId}%} to true
+								if {_wetSoak::%{_entityId}%} is not set:
+									set {_wetSoak::%{_entityId}%} to 0
+								add {_strength} to {_wetSoak::%{_entityId}%}
+								set {_wetEntity::%{_entityId}%} to loop-entity
 						set {_wetCount} to 2 + {_strength}
 						loop {_wetCount} times:
 							set {_dropLoc} to {_loc}
@@ -1099,3 +1184,8 @@ every 4 ticks:
 		set {_entity} to {_hotEntity::%{_entityId}%}
 		if {_entity} is set:
 			stHeatItemWithEncasedFan({_entity}, loop-value)
+	loop {_wetSoak::*}:
+		set {_entityId} to loop-index
+		set {_entity} to {_wetEntity::%{_entityId}%}
+		if {_entity} is set:
+			stSoakItemWithEncasedFan({_entity}, loop-value)

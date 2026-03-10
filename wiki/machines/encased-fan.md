@@ -45,7 +45,10 @@ The core block changes to match the selected mode.
 
 ## Wet Air
 - Produces wet airflow particles.
-- Useful for alternate fan setups and future processing behavior.
+- Can process dropped dirt into mud.
+- Processing speed increases with fan strength.
+- Entire dropped stacks are processed at once when the soak time is reached.
+- Items can keep wet-processing progress while traveling through multiple wet-air fans, such as across a [Belt](belt.md).
 
 ## Hot Air
 - Produces hot airflow particles.
@@ -62,6 +65,10 @@ Examples include:
 - sand into glass
 - cactus into green dye
 - crushed iron, gold, and copper into ingots
+
+## Wet Processing Support
+Examples include:
+- dirt into mud
 
 ## Notes
 - Trapdoor sides cannot be opened normally.
