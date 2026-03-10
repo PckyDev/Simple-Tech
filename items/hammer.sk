@@ -81,6 +81,8 @@ function stCustomCraftingResult(inv: inventory) :: item:
 		return stBelt()
 	if stIsCablePoleRecipe({_inv}) is true:
 		return stCablePole()
+	if stIsEncasedFanRecipe({_inv}) is true:
+		return stEncasedFan()
 
 function stConsumeCustomCraftingRecipe(inv: inventory):
 	if stIsHammerRecipe({_inv}) is true:
@@ -115,6 +117,9 @@ function stConsumeCustomCraftingRecipe(inv: inventory):
 		stop
 	if stIsCablePoleRecipe({_inv}) is true:
 		stConsumeCablePoleRecipe({_inv})
+		stop
+	if stIsEncasedFanRecipe({_inv}) is true:
+		stConsumeEncasedFanRecipe({_inv})
 
 function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsHammer({_i}) is true:
@@ -134,6 +139,8 @@ function stIsCustomCraftingResult(i: item) :: boolean:
 	if stIsBelt({_i}) is true:
 		return true
 	if stIsCablePole({_i}) is true:
+		return true
+	if stIsEncasedFan({_i}) is true:
 		return true
 	return false
 

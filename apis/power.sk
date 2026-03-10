@@ -5,6 +5,8 @@ function stPowerMachineBlockKey(b: block) :: text:
 function stPowerMachineBlock(b: block) :: block:
 	if stIsPlacedPress({_b}) is true:
 		return {_b}
+	if stIsEncasedFanPart({_b}) is true:
+		return stEncasedFanMachineAnchorBlock({_b})
 	if {_b} is lever:
 		set {_press} to stPressFromCrankBlock({_b})
 		if stIsPlacedPress({_press}) is true:
@@ -17,6 +19,8 @@ function stPowerMachineBlock(b: block) :: block:
 function stPowerMachineId(b: block) :: text:
 	if stIsPlacedPress({_b}) is true:
 		return "press:%stPressId({_b})%"
+	if stIsEncasedFanPart({_b}) is true:
+		return "fan:%stEncasedFanId(stEncasedFanMachineAnchorBlock({_b}))%"
 	if stIsWaterWheelPart({_b}) is true:
 		set {_support} to stWaterWheelSupportBlockFromPart({_b})
 		if {_support} is set:
@@ -43,9 +47,27 @@ function stPowerNodeBlockFromId(id: text) :: block:
 	if {_key} starts with "waterwheel:":
 		replace first "waterwheel:" with "" in {_key}
 		return {st.waterwheel.machine::%{_key}%::barrel}
+	if {_key} starts with "fan:":
+		replace first "fan:" with "" in {_key}
+		return {st.fan::%{_key}%::base}
 	if {_key} starts with "pole:":
 		replace first "pole:" with "" in {_key}
 		return {st.pole::%{_key}%::base}
+
+function stAdjacentPowerNodeId(id: text, side: text) :: text:
+	set {_node} to stPowerNodeBlockFromId({_id})
+	if {_node} is not set:
+		stop
+	set {_adjacent} to stOffsetSideBlock({_node}, {_side}, 1)
+	set {_neighbor} to stPowerMachineBlock({_adjacent})
+	if {_neighbor} is not set:
+		stop
+	set {_neighborId} to stPowerMachineId({_neighbor})
+	if {_neighborId} is not set:
+		stop
+	if {_neighborId} is {_id}:
+		stop
+	return {_neighborId}
 
 function stPowerEndpointAvailable(b: block) :: boolean:
 	set {_id} to stPowerMachineId({_b})
@@ -74,6 +96,8 @@ function stMachineCanOutputPower(b: block) :: boolean:
 function stMachineCanReceivePower(b: block) :: boolean:
 	if stIsPlacedPress({_b}) is true:
 		return true
+	if stIsEncasedFanPart({_b}) is true:
+		return true
 	return false
 
 function stWaterWheelProducesPower(b: block) :: boolean:
@@ -99,6 +123,8 @@ function stMachineOutputRate(b: block) :: number:
 function stMachineAcceptPower(b: block, amount: number) :: boolean:
 	if stIsPlacedPress({_b}) is true:
 		return stAddPressPower({_b}, {_amount})
+	if stIsEncasedFanPart({_b}) is true:
+		return stAddEncasedFanPower({_b}, {_amount})
 	return false
 
 function stMachineCableAnchorLocation(b: block) :: location:
@@ -221,8 +247,33 @@ function stMachineHasCable(b: block) :: boolean:
 	set {_machineId} to stPowerMachineId({_b})
 	if {_machineId} is not set:
 		return false
-	if stPowerNodeLinkCountFromId({_machineId}) > 0:
-		return true
+	set {_queue::*} to {_machineId}
+	set {_visited::%{_machineId}%} to true
+	set {_index} to 1
+	set {_sides::*} to "north" and "south" and "east" and "west" and "up" and "down"
+	while {_queue::%{_index}%} is set:
+		set {_nodeId} to {_queue::%{_index}%}
+		if stPowerNodeLinkCountFromId({_nodeId}) > 0:
+			return true
+		loop {st.power.links::*}:
+			set {_linkId} to loop-value
+			set {_a} to {st.power.link::%{_linkId}%::fromid}
+			set {_bId} to {st.power.link::%{_linkId}%::toid}
+			if {_a} is {_nodeId}:
+				if {_visited::%{_bId}%} is not true:
+					set {_visited::%{_bId}%} to true
+					add {_bId} to {_queue::*}
+			else if {_bId} is {_nodeId}:
+				if {_visited::%{_a}%} is not true:
+					set {_visited::%{_a}%} to true
+					add {_a} to {_queue::*}
+		loop {_sides::*}:
+			set {_adjacentId} to stAdjacentPowerNodeId({_nodeId}, loop-value)
+			if {_adjacentId} is set:
+				if {_visited::%{_adjacentId}%} is not true:
+					set {_visited::%{_adjacentId}%} to true
+					add {_adjacentId} to {_queue::*}
+		add 1 to {_index}
 	return false
 
 function stCreatePowerLink(from: block, to: block):
@@ -258,6 +309,7 @@ function stTransferPowerFromSource(b: block):
 	set {_queue::*} to {_sourceId}
 	set {_visited::%{_sourceId}%} to true
 	set {_index} to 1
+	set {_sides::*} to "north" and "south" and "east" and "west" and "up" and "down"
 	while {_queue::%{_index}%} is set:
 		set {_nodeId} to {_queue::%{_index}%}
 		loop {st.power.links::*}:
@@ -272,6 +324,12 @@ function stTransferPowerFromSource(b: block):
 				if {_visited::%{_a}%} is not true:
 					set {_visited::%{_a}%} to true
 					add {_a} to {_queue::*}
+		loop {_sides::*}:
+			set {_adjacentId} to stAdjacentPowerNodeId({_nodeId}, loop-value)
+			if {_adjacentId} is set:
+				if {_visited::%{_adjacentId}%} is not true:
+					set {_visited::%{_adjacentId}%} to true
+					add {_adjacentId} to {_queue::*}
 		add 1 to {_index}
 	set {_receiverCount} to 0
 	loop {_queue::*}:
@@ -282,16 +340,9 @@ function stTransferPowerFromSource(b: block):
 				set {_receivers::%{_receiverCount}%} to {_receiver}
 	if {_receiverCount} <= 0:
 		stop
-	set {_routeIndex} to {st.power.route::%{_sourceId}%}
-	if {_routeIndex} is not set:
-		set {_routeIndex} to 1
-	if {_routeIndex} > {_receiverCount}:
-		set {_routeIndex} to 1
-	stMachineAcceptPower({_receivers::%{_routeIndex}%}, {_rate})
-	add 1 to {_routeIndex}
-	if {_routeIndex} > {_receiverCount}:
-		set {_routeIndex} to 1
-	set {st.power.route::%{_sourceId}%} to {_routeIndex}
+	set {_share} to {_rate} / {_receiverCount}
+	loop {_receivers::*}:
+		stMachineAcceptPower(loop-value, {_share})
 
 function stConsumeOneCableFromTool(p: player):
 	set {_tool} to {_p}'s tool

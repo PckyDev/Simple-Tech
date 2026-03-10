@@ -24,16 +24,17 @@
 ## Power Output
 - Produces power only while valid adjacent water is present.
 - Sends `1` power every `10` ticks through a connected [Cable](../items/cable.md).
-- Currently outputs to the [Press](press.md).
+- Can power a [Press](press.md), an [Encased Fan](encased-fan.md), or a touching group of connected machines.
 
 ## Connection Setup
 1. Craft a [Cable](../items/cable.md).
 2. Right-click the Water Wheel.
-3. Right-click a [Press](press.md) within `10` blocks, or route the connection through a [Cable Utility Pole](cable-utility-pole.md).
+3. Right-click a [Press](press.md), [Encased Fan](encased-fan.md), or a nearby relay point within `10` blocks.
+4. Machines that touch each other will automatically share the same network.
 
 ## Notes
 - If any part of the multiblock is broken, the whole Water Wheel breaks.
 - Breaking the machine returns the Water Wheel item.
 - Connected Cables are dropped back if the machine is removed.
 - The machine shows status text when looked at in-game.
-- Water Wheels are commonly paired with a [Press](press.md), [Belt](belt.md), and [Cable Utility Pole](cable-utility-pole.md) for cleaner automation layouts.
+- Water Wheels are commonly paired with a [Press](press.md), [Encased Fan](encased-fan.md), [Belt](belt.md), and [Cable Utility Pole](cable-utility-pole.md) for cleaner automation layouts.

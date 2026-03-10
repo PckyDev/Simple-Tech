@@ -101,6 +101,8 @@ function stShowMachineDeltaHologram(b: block, text: text, viewer: player):
 function stMachineInfoBlock(b: block) :: block:
 	if stIsPlacedPress({_b}) is true:
 		return {_b}
+	if stIsEncasedFanPart({_b}) is true:
+		return stEncasedFanMachineAnchorBlock({_b})
 	if {_b} is lever:
 		set {_press} to stPressFromCrankBlock({_b})
 		if stIsPlacedPress({_press}) is true:
@@ -136,6 +138,8 @@ function stPressStatusText(b: block) :: text:
 function stMachineInfoTitle(b: block) :: text:
 	if stIsPlacedPress({_b}) is true:
 		return "&6&lPress"
+	if stIsEncasedFanPart({_b}) is true:
+		return "&6&lEncased Fan"
 	if stIsWaterWheelPart({_b}) is true:
 		return "&6&lWater Wheel"
 
@@ -151,6 +155,12 @@ function stMachineInfoSubtitle(b: block) :: text:
 		if stMachineHasCable({_b}) is true:
 			set {_cable} to "&aCable linked"
 		return "&e%{_stored}%&7/&e%{_required}% ⚡%nl%%{_status}%%nl%%{_cable}%"
+	if stIsEncasedFanPart({_b}) is true:
+		set {_status} to stEncasedFanStatusText({_b})
+		set {_cable} to "&7No cable"
+		if stMachineHasCable({_b}) is true:
+			set {_cable} to "&aCable linked"
+		return "&7Fluid-driven air mode%nl%%{_status}%%nl%%{_cable}%"
 	if stIsWaterWheelPart({_b}) is true:
 		set {_status} to stWaterWheelStatusText({_b})
 		set {_cable} to "&7No cable"

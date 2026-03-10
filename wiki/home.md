@@ -48,6 +48,7 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 - [Water Wheel](machines/water-wheel.md)
 - [Belt](machines/belt.md)
 - [Cable Utility Pole](machines/cable-utility-pole.md)
+- [Encased Fan](machines/encased-fan.md)
 
 ---
 
@@ -62,3 +63,4 @@ This wiki covers every item and machine currently implemented in the pack, inclu
 7. Craft a [Cable](items/cable.md) to connect the Water Wheel to a [Press](machines/press.md)
 8. Build [Belts](machines/belt.md) to move items between machines
 9. Use a [Cable Utility Pole](machines/cable-utility-pole.md) to route multiple Cable connections more cleanly
+10. Build an [Encased Fan](machines/encased-fan.md) for powered item movement and hot-air smelting

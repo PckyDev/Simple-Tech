@@ -1,0 +1,1101 @@
+function stEncasedFan() :: item:
+	set {_item} to copper bulb named "&6Encased Fan"
+	set lore of {_item} to "&7Blows air when powered." and "&7Can hold water or lava in its GUI." and "&8Tier 1 • Mechanical Tech" and "&0st:encased_fan"
+	return {_item}
+
+function stIsEncasedFan(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not copper bulb:
+		return false
+	return stHasId({_i}, "st:encased_fan")
+
+function stIsEncasedFanRecipe(inv: inventory) :: boolean:
+	if slot 1 of {_inv} is not air:
+		return false
+	if slot 2 of {_inv} is not spruce trapdoor:
+		return false
+	if slot 3 of {_inv} is not air:
+		return false
+	if slot 4 of {_inv} is not spruce trapdoor:
+		return false
+	if stHasId(slot 5 of {_inv}, "st:copper_frame") is false:
+		return false
+	if slot 6 of {_inv} is not spruce trapdoor:
+		return false
+	if slot 7 of {_inv} is not air:
+		return false
+	if slot 8 of {_inv} is not spruce trapdoor:
+		return false
+	if slot 9 of {_inv} is not air:
+		return false
+	return true
+
+function stConsumeEncasedFanRecipe(inv: inventory):
+	loop 9 times:
+		stConsumeSlot({_inv}, loop-number)
+
+function stEncasedFanId(b: block) :: text:
+	return stBlockId({_b})
+
+function stIsEncasedFanPart(b: block) :: boolean:
+	if {_b} is not set:
+		return false
+	if {st.fan.part::%stBlockId({_b})%} is set:
+		return true
+	return false
+
+function stEncasedFanIdFromPart(b: block) :: text:
+	return {st.fan.part::%stBlockId({_b})%}
+
+function stEncasedFanPartType(b: block) :: text:
+	return {st.fan.parttype::%stBlockId({_b})%}
+
+function stIsEncasedFanBase(b: block) :: boolean:
+	if stIsEncasedFanPart({_b}) is false:
+		return false
+	if stEncasedFanPartType({_b}) is "base":
+		return true
+	return false
+
+function stEncasedFanMachineAnchorBlock(b: block) :: block:
+	if stIsEncasedFanPart({_b}) is false:
+		return {_b}
+	set {_id} to stEncasedFanIdFromPart({_b})
+	return {st.fan::%{_id}%::base}
+
+function stEncasedFanFluid(id: text) :: text:
+	set {_fluid} to {st.fan::%{_id}%::fluid}
+	if {_fluid} is not set:
+		return "empty"
+	return {_fluid}
+
+function stEncasedFanFluidItem(id: text) :: item:
+	set {_fluid} to stEncasedFanFluid({_id})
+	if {_fluid} is "water":
+		return water bucket
+	if {_fluid} is "lava":
+		return lava bucket
+
+function stEncasedFanGuiTitle() :: text:
+	return "&8Encased Fan"
+
+function stEncasedFanPanelBlock(base: block, side: text) :: block:
+	return stOffsetSideBlock({_base}, {_side}, 1)
+
+function stEncasedFanTopBlock(base: block) :: block:
+	return block above {_base}
+
+function stEncasedFanBottomBlock(base: block) :: block:
+	return block below {_base}
+
+function stEncasedFanFaceBlock(base: block, side: text) :: block:
+	if {_side} is "up":
+		return stEncasedFanTopBlock({_base})
+	if {_side} is "down":
+		return stEncasedFanBottomBlock({_base})
+	return stEncasedFanPanelBlock({_base}, {_side})
+
+function stEncasedFanOutputSide(id: text) :: text:
+	return {st.fan::%{_id}%::output}
+
+function stEncasedFanPlacementSide(p: player) :: text:
+	set {_pitch} to pitch of {_p}
+	if {_pitch} <= -55:
+		return "down"
+	if {_pitch} >= 55:
+		return "up"
+	return stOppositeHorizontal(stHorizontalSideName({_p}))
+
+function stEncasedFanTrapdoorFacing(side: text) :: text:
+	return {_side}
+
+function stEncasedFanIsFullReplacementBlock(b: block) :: boolean:
+	if {_b} is air:
+		return false
+	if {_b} is water or lava:
+		return false
+	if {_b} is solid:
+		set {_type} to "%type of {_b}%"
+		if {_type} contains "slab":
+			return false
+		if {_type} contains "stairs":
+			return false
+		if {_type} contains "fence":
+			return false
+		if {_type} contains "wall":
+			return false
+		if {_type} contains "pane":
+			return false
+		if {_type} contains "trapdoor":
+			return false
+		if {_type} contains "door":
+			return false
+		if {_type} contains "gate":
+			return false
+		if {_type} contains "button":
+			return false
+		if {_type} contains "sign":
+			return false
+		if {_type} contains "torch":
+			return false
+		if {_type} contains "lantern":
+			return false
+		if {_type} contains "chain":
+			return false
+		if {_type} contains "bar":
+			return false
+		if {_type} contains "chest":
+			return false
+		if {_type} contains "barrel":
+			return false
+		if {_type} contains "hopper":
+			return false
+		if {_type} contains "anvil":
+			return false
+		if {_type} contains "lectern":
+			return false
+		if {_type} contains "carpet":
+			return false
+		return true
+	return false
+
+function stEncasedFanAllowedReplacementItem(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if stIsEncasedFan({_i}) is true:
+		return true
+	if type of {_i} is not a block:
+		return false
+	set {_type} to "%type of {_i}%"
+	if {_type} contains "slab":
+		return false
+	if {_type} contains "stairs":
+		return false
+	if {_type} contains "fence":
+		return false
+	if {_type} contains "wall":
+		return false
+	if {_type} contains "pane":
+		return false
+	if {_type} contains "trapdoor":
+		return false
+	if {_type} contains "door":
+		return false
+	if {_type} contains "gate":
+		return false
+	if {_type} contains "button":
+		return false
+	if {_type} contains "sign":
+		return false
+	if {_type} contains "torch":
+		return false
+	if {_type} contains "lantern":
+		return false
+	if {_type} contains "chain":
+		return false
+	if {_type} contains "bar":
+		return false
+	if {_type} contains "chest":
+		return false
+	if {_type} contains "barrel":
+		return false
+	if {_type} contains "hopper":
+		return false
+	if {_type} contains "anvil":
+		return false
+	if {_type} contains "lectern":
+		return false
+	if {_type} contains "carpet":
+		return false
+	return true
+
+function stConsumeOneFromTool(p: player):
+	if gamemode of {_p} is creative:
+		stop
+	set {_tool} to {_p}'s tool
+	set amount of {_tool} to amount of {_tool} - 1
+	if amount of {_tool} <= 0:
+		set {_p}'s tool to air
+	else:
+		set {_p}'s tool to {_tool}
+
+function stPlaceEncasedFanMachine(p: player, base: block, consumeTool: boolean) :: boolean:
+	set {_id} to stEncasedFanId({_base})
+	set {_output} to stEncasedFanPlacementSide({_p})
+	set {st.fan::%{_id}%::base} to {_base}
+	set {st.fan::%{_id}%::output} to {_output}
+	set {st.fan::%{_id}%::vertical_facing} to stHorizontalSideName({_p})
+	set {st.fan::%{_id}%::fluid} to "empty"
+	set {st.fan::%{_id}%::active} to 0
+	if stEncasedFanCanPlace({_base}, {_output}) is false:
+		delete {st.fan::%{_id}%::*}
+		return false
+	set block at location of {_base} to black concrete
+	stRegisterEncasedFanPart({_base}, {_id}, "base")
+	add {_id} to {st.fan.ids::*}
+	stRefreshEncasedFanPanels({_id})
+	if {_consumeTool} is true:
+		stConsumeOneFromTool({_p})
+	return true
+
+function stRegisterEncasedFanPart(b: block, id: text, partType: text):
+	set {st.fan.part::%stBlockId({_b})%} to {_id}
+	set {st.fan.parttype::%stBlockId({_b})%} to {_partType}
+	if {_partType} is "base":
+		set {st.fan::%{_id}%::base} to {_b}
+
+function stClearEncasedFanPartMapping(b: block):
+	delete {st.fan.part::%stBlockId({_b})%}
+	delete {st.fan.parttype::%stBlockId({_b})%}
+
+function stSetEncasedFanTrapdoor(block: block, side: text, copper: boolean):
+	set {_facing} to stEncasedFanTrapdoorFacing({_side})
+	if {_copper} is true:
+		if {_facing} is "north":
+			set block data of {_block} to waxed_copper_trapdoor[facing=north;half=bottom;open=true]
+		else if {_facing} is "south":
+			set block data of {_block} to waxed_copper_trapdoor[facing=south;half=bottom;open=true]
+		else if {_facing} is "west":
+			set block data of {_block} to waxed_copper_trapdoor[facing=west;half=bottom;open=true]
+		else:
+			set block data of {_block} to waxed_copper_trapdoor[facing=east;half=bottom;open=true]
+	else:
+		if {_facing} is "north":
+			set block data of {_block} to spruce_trapdoor[facing=north;half=bottom;open=true]
+		else if {_facing} is "south":
+			set block data of {_block} to spruce_trapdoor[facing=south;half=bottom;open=true]
+		else if {_facing} is "west":
+			set block data of {_block} to spruce_trapdoor[facing=west;half=bottom;open=true]
+		else:
+			set block data of {_block} to spruce_trapdoor[facing=east;half=bottom;open=true]
+
+function stSetEncasedFanTopTrapdoor(block: block, facing: text):
+	if {_facing} is "north":
+		set block data of {_block} to spruce_trapdoor[facing=north;half=bottom;open=false]
+	else if {_facing} is "south":
+		set block data of {_block} to spruce_trapdoor[facing=south;half=bottom;open=false]
+	else if {_facing} is "west":
+		set block data of {_block} to spruce_trapdoor[facing=west;half=bottom;open=false]
+	else:
+		set block data of {_block} to spruce_trapdoor[facing=east;half=bottom;open=false]
+
+function stSetEncasedFanBottomTrapdoor(block: block, facing: text, copper: boolean):
+	if {_copper} is true:
+		if {_facing} is "north":
+			set block data of {_block} to waxed_copper_trapdoor[facing=north;half=top;open=false]
+		else if {_facing} is "south":
+			set block data of {_block} to waxed_copper_trapdoor[facing=south;half=top;open=false]
+		else if {_facing} is "west":
+			set block data of {_block} to waxed_copper_trapdoor[facing=west;half=top;open=false]
+		else:
+			set block data of {_block} to waxed_copper_trapdoor[facing=east;half=top;open=false]
+	else:
+		if {_facing} is "north":
+			set block data of {_block} to spruce_trapdoor[facing=north;half=top;open=false]
+		else if {_facing} is "south":
+			set block data of {_block} to spruce_trapdoor[facing=south;half=top;open=false]
+		else if {_facing} is "west":
+			set block data of {_block} to spruce_trapdoor[facing=west;half=top;open=false]
+		else:
+			set block data of {_block} to spruce_trapdoor[facing=east;half=top;open=false]
+
+function stSetEncasedFanVerticalTrapdoor(block: block, side: text, facing: text, copper: boolean):
+	if {_side} is "up":
+		if {_copper} is true:
+			if {_facing} is "north":
+				set block data of {_block} to waxed_copper_trapdoor[facing=north;half=bottom;open=false]
+			else if {_facing} is "south":
+				set block data of {_block} to waxed_copper_trapdoor[facing=south;half=bottom;open=false]
+			else if {_facing} is "west":
+				set block data of {_block} to waxed_copper_trapdoor[facing=west;half=bottom;open=false]
+			else:
+				set block data of {_block} to waxed_copper_trapdoor[facing=east;half=bottom;open=false]
+		else:
+			stSetEncasedFanTopTrapdoor({_block}, {_facing})
+	else:
+		stSetEncasedFanBottomTrapdoor({_block}, {_facing}, {_copper})
+
+function stSetEncasedFanFaceTrapdoor(block: block, side: text, facing: text, copper: boolean):
+	if {_side} is "up":
+		stSetEncasedFanVerticalTrapdoor({_block}, "up", {_facing}, {_copper})
+		stop
+	if {_side} is "down":
+		stSetEncasedFanVerticalTrapdoor({_block}, "down", {_facing}, {_copper})
+		stop
+	stSetEncasedFanTrapdoor({_block}, {_side}, {_copper})
+
+function stApplyEncasedFanCore(id: text):
+	set {_base} to {st.fan::%{_id}%::base}
+	if {_base} is not set:
+		stop
+	set {_fluid} to stEncasedFanFluid({_id})
+	if {_fluid} is "water":
+		set block at location of {_base} to water
+	else if {_fluid} is "lava":
+		set block at location of {_base} to lava
+	else:
+		set block at location of {_base} to black concrete
+	stRegisterEncasedFanPart({_base}, {_id}, "base")
+
+function stEncasedFanCanPlace(base: block, output: text) :: boolean:
+	set {_front} to stEncasedFanFaceBlock({_base}, {_output})
+	if {_front} is not air:
+		return false
+	set {_sides::*} to "north" and "south" and "east" and "west" and "up" and "down"
+	loop {_sides::*}:
+		set {_side} to loop-value
+		if {_side} is not {_output}:
+			set {_panel} to stEncasedFanFaceBlock({_base}, {_side})
+			if {_panel} is not air:
+				if stEncasedFanIsFullReplacementBlock({_panel}) is false:
+					return false
+	return true
+
+function stRefreshEncasedFanPanels(id: text):
+	set {_base} to {st.fan::%{_id}%::base}
+	set {_output} to stEncasedFanOutputSide({_id})
+	set {_verticalFacing} to {st.fan::%{_id}%::vertical_facing}
+	if {_verticalFacing} is not set:
+		set {_verticalFacing} to "north"
+	if {_base} is not set:
+		stop
+	set {_sides::*} to "north" and "south" and "east" and "west" and "up" and "down"
+	loop {_sides::*}:
+		set {_side} to loop-value
+		set {_panel} to stEncasedFanFaceBlock({_base}, {_side})
+		set {_blockedByOtherFan} to false
+		if stIsEncasedFanPart({_panel}) is true:
+			if stEncasedFanIdFromPart({_panel}) is not {_id}:
+				set {_blockedByOtherFan} to true
+		if {_blockedByOtherFan} is false:
+			if {_side} is {_output}:
+				if {_panel} is air:
+					stSetEncasedFanFaceTrapdoor({_panel}, {_side}, {_verticalFacing}, true)
+					stRegisterEncasedFanPart({_panel}, {_id}, "panel:%{_side}%")
+				else if {_panel} is waxed copper trapdoor:
+					stRegisterEncasedFanPart({_panel}, {_id}, "panel:%{_side}%")
+				else if stIsEncasedFanPart({_panel}) is true:
+					if stEncasedFanIdFromPart({_panel}) = {_id}:
+						if stEncasedFanPartType({_panel}) is not "base":
+							stClearEncasedFanPartMapping({_panel})
+			else:
+				if {_panel} is air:
+					stSetEncasedFanFaceTrapdoor({_panel}, {_side}, {_verticalFacing}, false)
+					stRegisterEncasedFanPart({_panel}, {_id}, "panel:%{_side}%")
+				else if {_panel} is spruce trapdoor:
+					stRegisterEncasedFanPart({_panel}, {_id}, "panel:%{_side}%")
+				else if stEncasedFanIsFullReplacementBlock({_panel}) is true:
+					if stIsEncasedFanPart({_panel}) is true:
+						if stEncasedFanIdFromPart({_panel}) = {_id}:
+							stClearEncasedFanPartMapping({_panel})
+				else:
+					if stIsEncasedFanPart({_panel}) is true:
+						if stEncasedFanIdFromPart({_panel}) = {_id}:
+							stClearEncasedFanPartMapping({_panel})
+					set block at location of {_panel} to air
+					stSetEncasedFanFaceTrapdoor({_panel}, {_side}, {_verticalFacing}, false)
+					stRegisterEncasedFanPart({_panel}, {_id}, "panel:%{_side}%")
+
+function stOpenEncasedFanGui(p: player, b: block):
+	set {_base} to stEncasedFanMachineAnchorBlock({_b})
+	set {_id} to stEncasedFanId({_base})
+	set {_inv} to chest inventory with 1 row named stEncasedFanGuiTitle()
+	loop 9 times:
+		set slot (loop-number - 1) of {_inv} to gray stained glass pane named " "
+	set slot 4 of {_inv} to air
+	set {_fluid} to stEncasedFanFluid({_id})
+	if {_fluid} is "water":
+		set slot 4 of {_inv} to water bucket
+	else if {_fluid} is "lava":
+		set slot 4 of {_inv} to lava bucket
+	set {st.fan.gui.open::%uuid of {_p}%} to {_id}
+	open {_inv} to {_p}
+
+function stValidateEncasedFanGui(p: player, inv: inventory, closeGui: boolean):
+	set {_id} to {st.fan.gui.open::%uuid of {_p}%}
+	if {_id} is not set:
+		stop
+	loop 9 times:
+		if loop-number - 1 is not 4:
+			set slot (loop-number - 1) of {_inv} to gray stained glass pane named " "
+	set {_slot} to slot 4 of {_inv}
+	if {_slot} is air:
+		set {st.fan::%{_id}%::fluid} to "empty"
+	else if type of {_slot} is water bucket:
+		set {st.fan::%{_id}%::fluid} to "water"
+		set slot 4 of {_inv} to water bucket
+	else if type of {_slot} is lava bucket:
+		set {st.fan::%{_id}%::fluid} to "lava"
+		set slot 4 of {_inv} to lava bucket
+	else:
+		give {_slot} to {_p}
+		set slot 4 of {_inv} to air
+		set {st.fan::%{_id}%::fluid} to "empty"
+	stApplyEncasedFanCore({_id})
+	stRefreshEncasedFanPanels({_id})
+	if {_closeGui} is true:
+		delete {st.fan.gui.open::%uuid of {_p}%}
+
+function stEncasedFanActiveTicks(id: text) :: number:
+	set {_ticks} to {st.fan::%{_id}%::active}
+	if {_ticks} is not set:
+		return 0
+	return {_ticks}
+
+function stEncasedFanCurrentFlow(id: text) :: number:
+	set {_flow} to {st.fan::%{_id}%::flow}
+	if {_flow} is not set:
+		return 0
+	return {_flow}
+
+function stEncasedFanStrength(id: text) :: number:
+	if stEncasedFanActiveTicks({_id}) <= 0:
+		return 0
+	set {_strength} to stEncasedFanCurrentFlow({_id})
+	if {_strength} <= 0:
+		return 0
+	if {_strength} < 0.35:
+		set {_strength} to 0.35
+	if {_strength} > 5:
+		set {_strength} to 5
+	return {_strength}
+
+function stIsEncasedFanPowered(b: block) :: boolean:
+	set {_id} to stEncasedFanId(stEncasedFanMachineAnchorBlock({_b}))
+	if stEncasedFanActiveTicks({_id}) > 0:
+		return true
+	return false
+
+function stAddEncasedFanPower(b: block, amount: number) :: boolean:
+	set {_base} to stEncasedFanMachineAnchorBlock({_b})
+	set {_id} to stEncasedFanId({_base})
+	if {st.fan::%{_id}%::active} is not set:
+		set {st.fan::%{_id}%::active} to 0
+	set {st.fan::%{_id}%::active} to 24
+	if {st.fan::%{_id}%::flow.pending} is not set:
+		set {st.fan::%{_id}%::flow.pending} to 0
+	add {_amount} to {st.fan::%{_id}%::flow.pending}
+	return true
+
+function stEncasedFanParticleVelocity(side: text, strength: number) :: vector:
+	set {_speed} to 0.012 + ({_strength} * 0.008)
+	if {_speed} > 0.05:
+		set {_speed} to 0.05
+	if {_side} is "north":
+		return vector(0, 0, 0 - {_speed})
+	if {_side} is "south":
+		return vector(0, 0, {_speed})
+	if {_side} is "west":
+		return vector(0 - {_speed}, 0, 0)
+	if {_side} is "up":
+		return vector(0, {_speed}, 0)
+	if {_side} is "down":
+		return vector(0, 0 - {_speed}, 0)
+	return vector({_speed}, 0, 0)
+
+function stEncasedFanPushVector(side: text, strength: number) :: vector:
+	set {_speed} to 0.03 + ({_strength} * 0.025)
+	if {_side} is "north":
+		return vector(0, 0.03, 0 - {_speed})
+	if {_side} is "south":
+		return vector(0, 0.03, {_speed})
+	if {_side} is "west":
+		return vector(0 - {_speed}, 0.03, 0)
+	if {_side} is "up":
+		return vector(0, {_speed}, 0)
+	if {_side} is "down":
+		return vector(0, 0 - {_speed}, 0)
+	return vector({_speed}, 0.03, 0)
+
+function stEncasedFanRange(strength: number) :: number:
+	set {_range} to rounded down {_strength}
+	if {_range} < 1:
+		set {_range} to 1
+	if {_range} > 5:
+		set {_range} to 5
+	return {_range}
+
+function stEncasedFanPathBlock(base: block, side: text, distance: number) :: block:
+	set {_loc} to location of {_base}
+	if {_side} is "north":
+		remove {_distance} from z-coordinate of {_loc}
+	else if {_side} is "south":
+		add {_distance} to z-coordinate of {_loc}
+	else if {_side} is "west":
+		remove {_distance} from x-coordinate of {_loc}
+	else if {_side} is "east":
+		add {_distance} to x-coordinate of {_loc}
+	else if {_side} is "up":
+		add {_distance} to y-coordinate of {_loc}
+	else if {_side} is "down":
+		remove {_distance} from y-coordinate of {_loc}
+	return block at {_loc}
+
+function stEncasedFanPathPassable(b: block) :: boolean:
+	if {_b} is air:
+		return true
+	if {_b} is water or lava:
+		return true
+	if stIsEncasedFanPart({_b}) is true:
+		return true
+	if {_b} is spruce trapdoor:
+		return true
+	if {_b} is waxed copper trapdoor:
+		return true
+	if {_b} is not solid:
+		return true
+	return false
+
+function stPushItemsWithEncasedFan(id: text):
+	set {_base} to {st.fan::%{_id}%::base}
+	if {_base} is not set:
+		stop
+	set {_strength} to stEncasedFanStrength({_id})
+	if {_strength} <= 0:
+		stop
+	set {_side} to stEncasedFanOutputSide({_id})
+	set {_push} to stEncasedFanPushVector({_side}, {_strength})
+	set {_range} to stEncasedFanRange({_strength})
+	delete {_pushed::*}
+	loop {_range} times:
+		set {_distance} to loop-number
+		set {_pathBlock} to stEncasedFanPathBlock({_base}, {_side}, {_distance})
+		if stEncasedFanPathPassable({_pathBlock}) is false:
+			stop loop
+		set {_center} to stEncasedFanBlowLocation({_id}, {_distance} - 1)
+		loop dropped items in radius 0.85 around {_center}:
+			set {_entityId} to "%uuid of loop-entity%"
+			if {_pushed::%{_entityId}%} is not set:
+				set {_pushed::%{_entityId}%} to true
+				set velocity of loop-entity to {_push}
+
+function stEncasedFanBlowLocation(id: text, step: number) :: location:
+	set {_base} to {st.fan::%{_id}%::base}
+	set {_side} to stEncasedFanOutputSide({_id})
+	set {_loc} to location of {_base}
+	# add 0.5 to x-coordinate of {_loc}
+	# add 0.5 to y-coordinate of {_loc}
+	# add 0.5 to z-coordinate of {_loc}
+	if {_side} is "north":
+		remove 0.55 + ({_step} * 0.55) from z-coordinate of {_loc}
+	else if {_side} is "south":
+		add 0.55 + ({_step} * 0.55) to z-coordinate of {_loc}
+	else if {_side} is "west":
+		remove 0.55 + ({_step} * 0.55) from x-coordinate of {_loc}
+	else if {_side} is "up":
+		add 0.55 + ({_step} * 0.55) to y-coordinate of {_loc}
+	else if {_side} is "down":
+		remove 0.55 + ({_step} * 0.55) from y-coordinate of {_loc}
+	else:
+		add 0.55 + ({_step} * 0.55) to x-coordinate of {_loc}
+	return {_loc}
+
+function stEncasedFanAirType(id: text) :: text:
+	set {_fluid} to stEncasedFanFluid({_id})
+	if {_fluid} is "water":
+		return "wet"
+	if {_fluid} is "lava":
+		return "hot"
+	return "normal"
+
+function stEncasedFanCookRecipeKey(i: item) :: text:
+	if {_i} is not set:
+		return ""
+	set {_single} to {_i}
+	set amount of {_single} to 1
+	return raw name of {_single}
+
+function stEncasedFanCookCacheId(b: block) :: text:
+	set {_loc} to location of {_b}
+	return "%world of {_loc}%:%x-coordinate of {_loc}%:%y-coordinate of {_loc}%:%z-coordinate of {_loc}%"
+
+function stRememberEncasedFanCookRecipe(input: item, result: item, cookTime: number):
+	set {_key} to stEncasedFanCookRecipeKey({_input})
+	if {_key} is "":
+		stop
+	if {_result} is not set:
+		stop
+	if {_cookTime} <= 0:
+		stop
+	set {_singleResult} to {_result}
+	set amount of {_singleResult} to 1
+	set {st.fan.cook::%{_key}%::checked} to true
+	set {st.fan.cook::%{_key}%::result} to {_singleResult}
+	set {st.fan.cook::%{_key}%::time} to {_cookTime}
+
+function stCacheEncasedFanCookRecipe(i: item):
+	set {_key} to stEncasedFanCookRecipeKey({_i})
+	if {_key} is "":
+		stop
+	if {st.fan.cook::%{_key}%::checked} is not set:
+		set {st.fan.cook::%{_key}%::checked} to false
+
+function stEncasedFanFallbackCookResult(i: item) :: item:
+	if stHasId({_i}, "st:crushed_iron") is true:
+		return iron ingot
+	if stHasId({_i}, "st:crushed_gold") is true:
+		return gold ingot
+	if stHasId({_i}, "st:crushed_copper") is true:
+		return copper ingot
+	if {_i} is raw iron:
+		return iron ingot
+	if {_i} is raw gold:
+		return gold ingot
+	if {_i} is raw copper:
+		return copper ingot
+	if {_i} is iron ore or deepslate iron ore:
+		return iron ingot
+	if {_i} is gold ore or deepslate gold ore or nether gold ore:
+		return gold ingot
+	if {_i} is copper ore or deepslate copper ore:
+		return copper ingot
+	if {_i} is ancient debris:
+		return netherite scrap
+	if {_i} is sand or red sand:
+		return glass
+	if {_i} is cobblestone:
+		return stone
+	if {_i} is stone:
+		return smooth stone
+	if {_i} is cobbled deepslate:
+		return deepslate
+	if {_i} is stone bricks:
+		return cracked stone bricks
+	if {_i} is deepslate bricks:
+		return cracked deepslate bricks
+	if {_i} is deepslate tiles:
+		return cracked deepslate tiles
+	if {_i} is nether bricks:
+		return cracked nether bricks
+	if {_i} is polished blackstone bricks:
+		return cracked polished blackstone bricks
+	if {_i} is sandstone:
+		return smooth sandstone
+	if {_i} is red sandstone:
+		return smooth red sandstone
+	if {_i} is quartz block:
+		return smooth quartz block
+	if {_i} is basalt:
+		return smooth basalt
+	if {_i} is clay ball:
+		return brick
+	if {_i} is clay:
+		return terracotta
+	if {_i} is cactus:
+		return green dye
+	if {_i} is sea pickle:
+		return lime dye
+	if {_i} is chorus fruit:
+		return popped chorus fruit
+	if {_i} is kelp:
+		return dried kelp
+	if {_i} is potato:
+		return baked potato
+	if {_i} is beef:
+		return cooked beef
+	if {_i} is porkchop:
+		return cooked porkchop
+	if {_i} is chicken:
+		return cooked chicken
+	if {_i} is rabbit:
+		return cooked rabbit
+	if {_i} is mutton:
+		return cooked mutton
+	if {_i} is cod:
+		return cooked cod
+	if {_i} is salmon:
+		return cooked salmon
+	if {_i} is oak log or spruce log or birch log or jungle log or acacia log or dark oak log or mangrove log or cherry log or pale oak log:
+		return charcoal
+	if {_i} is crimson stem or warped stem:
+		return charcoal
+	if {_i} is oak wood or spruce wood or birch wood or jungle wood or acacia wood or dark oak wood or mangrove wood or cherry wood or pale oak wood:
+		return charcoal
+	if {_i} is stripped oak log or stripped spruce log or stripped birch log or stripped jungle log or stripped acacia log or stripped dark oak log or stripped mangrove log or stripped cherry log or stripped pale oak log:
+		return charcoal
+	if {_i} is stripped crimson stem or stripped warped stem:
+		return charcoal
+	if {_i} is stripped oak wood or stripped spruce wood or stripped birch wood or stripped jungle wood or stripped acacia wood or stripped dark oak wood or stripped mangrove wood or stripped cherry wood or stripped pale oak wood:
+		return charcoal
+
+function stEncasedFanFallbackCookTime(i: item) :: number:
+	if stHasId({_i}, "st:crushed_iron") is true:
+		return 220
+	if stHasId({_i}, "st:crushed_gold") is true:
+		return 220
+	if stHasId({_i}, "st:crushed_copper") is true:
+		return 220
+	set {_result} to stEncasedFanFallbackCookResult({_i})
+	if {_result} is set:
+		return 200
+	return 0
+
+function stEncasedFanCookResult(i: item) :: item:
+	set {_key} to stEncasedFanCookRecipeKey({_i})
+	if {_key} is "":
+		stop
+	stCacheEncasedFanCookRecipe({_i})
+	set {_result} to {st.fan.cook::%{_key}%::result}
+	if {_result} is set:
+		return {_result}
+	return stEncasedFanFallbackCookResult({_i})
+
+function stEncasedFanCookTime(i: item) :: number:
+	set {_key} to stEncasedFanCookRecipeKey({_i})
+	if {_key} is "":
+		return 0
+	stCacheEncasedFanCookRecipe({_i})
+	set {_time} to {st.fan.cook::%{_key}%::time}
+	if {_time} is not set:
+		return stEncasedFanFallbackCookTime({_i})
+	return {_time}
+
+function stClearEncasedFanSmeltTracking(id: text):
+	remove {_id} from {st.fan.smelt.ids::*}
+	delete {st.fan.smelt::%{_id}%::*}
+
+function stHeatItemWithEncasedFan(e: entity, strength: number):
+	if {_e} is not set:
+		stop
+	set {_stack} to item of {_e}
+	if {_stack} is not set:
+		stop
+	set {_result} to stEncasedFanCookResult({_stack})
+	set {_cookTime} to stEncasedFanCookTime({_stack})
+	set {_entityId} to "%uuid of {_e}%"
+	if {_result} is not set:
+		stClearEncasedFanSmeltTracking({_entityId})
+		stop
+	if {_cookTime} <= 0:
+		stClearEncasedFanSmeltTracking({_entityId})
+		stop
+	set {_key} to stEncasedFanCookRecipeKey({_stack})
+	if {st.fan.smelt::%{_entityId}%::listed} is not true:
+		set {st.fan.smelt::%{_entityId}%::listed} to true
+		add {_entityId} to {st.fan.smelt.ids::*}
+	if {st.fan.smelt::%{_entityId}%::key} is not {_key}:
+		set {st.fan.smelt::%{_entityId}%::key} to {_key}
+		set {st.fan.smelt::%{_entityId}%::progress} to 0
+	set {st.fan.smelt::%{_entityId}%::ttl} to 60
+	if {st.fan.smelt::%{_entityId}%::progress} is not set:
+		set {st.fan.smelt::%{_entityId}%::progress} to 0
+	add {_strength} * 32 to {st.fan.smelt::%{_entityId}%::progress}
+	if {st.fan.smelt::%{_entityId}%::progress} < {_cookTime}:
+		stop
+	set {st.fan.smelt::%{_entityId}%::progress} to {_cookTime}
+	set {_current} to item of {_e}
+	if {_current} is not set:
+		stClearEncasedFanSmeltTracking({_entityId})
+		stop
+	if stEncasedFanCookRecipeKey({_current}) is not {_key}:
+		set {st.fan.smelt::%{_entityId}%::key} to stEncasedFanCookRecipeKey({_current})
+		set {st.fan.smelt::%{_entityId}%::progress} to 0
+		stop
+	set {_loc} to location of {_e}
+	set {_velocity} to velocity of {_e}
+	set {_output} to {_result}
+	set amount of {_output} to amount of {_current}
+	set item of {_e} to {_output}
+	set velocity of {_e} to {_velocity}
+	draw 6 flame particles with a velocity of vector(0, 0.02, 0) at {_loc}
+	draw 3 smoke particles with a velocity of vector(0, 0.02, 0) at {_loc}
+	stClearEncasedFanSmeltTracking({_entityId})
+
+function stEncasedFanStatusText(b: block) :: text:
+	set {_base} to stEncasedFanMachineAnchorBlock({_b})
+	set {_id} to stEncasedFanId({_base})
+	set {_air} to stEncasedFanAirType({_id})
+	set {_strength} to stEncasedFanStrength({_id})
+	set {_range} to stEncasedFanRange({_strength})
+	if {_air} is "wet":
+		set {_airLabel} to "&bWet air"
+	else if {_air} is "hot":
+		set {_airLabel} to "&6Hot air"
+	else:
+		set {_airLabel} to "&fNormal air"
+	if stIsEncasedFanPowered({_base}) is true:
+		return "&aBlowing • %{_airLabel}% • &eRange %{_range}%"
+	return "&7Idle • %{_airLabel}%"
+
+function stEncasedFanReservedOwnerId(b: block) :: text:
+	set {_base} to block below {_b}
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not "up":
+			return stEncasedFanId({_base})
+	set {_base} to block above {_b}
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not "down":
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "north", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		set {_side} to "south"
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not {_side}:
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "south", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		set {_side} to "north"
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not {_side}:
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "east", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		set {_side} to "west"
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not {_side}:
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "west", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		set {_side} to "east"
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is not {_side}:
+			return stEncasedFanId({_base})
+
+function stEncasedFanFrontOwnerId(b: block) :: text:
+	set {_base} to block below {_b}
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "up":
+			return stEncasedFanId({_base})
+	set {_base} to block above {_b}
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "down":
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "north", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "south":
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "south", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "north":
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "east", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "west":
+			return stEncasedFanId({_base})
+	set {_base} to stOffsetSideBlock({_b}, "west", 1)
+	if stIsEncasedFanBase({_base}) is true:
+		if stEncasedFanOutputSide(stEncasedFanId({_base})) is "east":
+			return stEncasedFanId({_base})
+
+on place of copper bulb:
+	if stIsEncasedFan(item) is false:
+		stop
+	set {_base} to event-block
+	if stPlaceEncasedFanMachine(player, {_base}, false) is false:
+		cancel event
+		send "&8[&6Simple Tech&8]&r &cNot enough space to place the Encased Fan." to player
+
+on place:
+	if stEncasedFanFrontOwnerId(event-block) is set:
+		cancel event
+		stop
+	set {_owner} to stEncasedFanReservedOwnerId(event-block)
+	if {_owner} is not set:
+		stop
+	if stEncasedFanIsFullReplacementBlock(event-block) is true:
+		stClearEncasedFanPartMapping(event-block)
+		stop
+	cancel event
+
+on right click:
+	if event-block is not set:
+		stop
+	if stIsEncasedFanPart(event-block) is false:
+		stop
+	set {_base} to stEncasedFanMachineAnchorBlock(event-block)
+	set {_id} to stEncasedFanId({_base})
+	set {_partType} to stEncasedFanPartType(event-block)
+	set {_output} to stEncasedFanOutputSide({_id})
+	if stIsCable(player's tool) is true:
+		if stIsEncasedFanBase(event-block) is true:
+			stop
+		cancel event
+		stop
+	if {_partType} is not "base":
+		if {_partType} is not "panel:%{_output}%":
+			if stEncasedFanAllowedReplacementItem(player's tool) is true:
+				cancel event
+				stClearEncasedFanPartMapping(event-block)
+				set block at location of event-block to air
+				if stIsEncasedFan(player's tool) is true:
+					if stPlaceEncasedFanMachine(player, event-block, true) is false:
+						stRefreshEncasedFanPanels({_id})
+						send "&8[&6Simple Tech&8]&r &cNot enough space to place the Encased Fan." to player
+					stop
+				set block at location of event-block to type of player's tool
+				stConsumeOneFromTool(player)
+				stop
+	cancel event
+	stOpenEncasedFanGui(player, event-block)
+
+on break:
+	if stIsEncasedFanPart(event-block) is true:
+		cancel drops
+		set {_base} to stEncasedFanMachineAnchorBlock(event-block)
+		set {_id} to stEncasedFanId({_base})
+		set {_sides::*} to "north" and "south" and "east" and "west" and "up" and "down"
+		loop {_sides::*}:
+			set {_panel} to stEncasedFanFaceBlock({_base}, loop-value)
+			if stIsEncasedFanPart({_panel}) is true:
+				if stEncasedFanIdFromPart({_panel}) = {_id}:
+					if stEncasedFanPartType({_panel}) is not "base":
+						set block at location of {_panel} to air
+						stClearEncasedFanPartMapping({_panel})
+		set block at location of {_base} to air
+		stClearEncasedFanPartMapping({_base})
+		drop stEncasedFan() at location of {_base}
+		set {_fluidItem} to stEncasedFanFluidItem({_id})
+		if {_fluidItem} is set:
+			drop {_fluidItem} at location of {_base}
+		stDisconnectMachinePower({_base}, true)
+		remove {_id} from {st.fan.ids::*}
+		delete {st.fan::%{_id}%::*}
+		stop
+	set {_owner} to stEncasedFanReservedOwnerId(event-block)
+	if {_owner} is set:
+		wait 1 tick
+		if event-block is air:
+			stRefreshEncasedFanPanels({_owner})
+
+on inventory click:
+	set {_top} to top inventory of player
+	if name of {_top} is not stEncasedFanGuiTitle():
+		stop
+	if clicked slot is not set:
+		cancel event
+		stop
+	if raw index of clicked slot < 9:
+		if raw index of clicked slot is not 4:
+			cancel event
+			stop
+	else:
+		if inventory action is shift move:
+			cancel event
+			stop
+	wait 1 tick
+	stValidateEncasedFanGui(player, {_top}, false)
+
+on inventory drag:
+	set {_top} to top inventory of player
+	if name of {_top} is not stEncasedFanGuiTitle():
+		stop
+	loop event-slots:
+		if raw index of loop-value < 9:
+			cancel event
+			stop
+
+on inventory close:
+	if name of event-inventory is not stEncasedFanGuiTitle():
+		stop
+	stValidateEncasedFanGui(player, event-inventory, true)
+
+on start smelt:
+	set {_input} to smelting item
+	if {_input} is not set:
+		stop
+	set {_cacheId} to stEncasedFanCookCacheId(event-block)
+	set {st.fan.cook.pending::%{_cacheId}%::input} to {_input}
+	set {_cookTime} to total cook time of event-block
+	if {_cookTime} is set:
+		set {st.fan.cook.pending::%{_cacheId}%::time} to {_cookTime}
+
+on smelt:
+	set {_cacheId} to stEncasedFanCookCacheId(event-block)
+	set {_input} to {st.fan.cook.pending::%{_cacheId}%::input}
+	set {_cookTime} to {st.fan.cook.pending::%{_cacheId}%::time}
+	if {_cookTime} is not set:
+		set {_cookTime} to total cook time of event-block
+	if {_input} is set:
+		stRememberEncasedFanCookRecipe({_input}, smelted item, {_cookTime})
+	delete {st.fan.cook.pending::%{_cacheId}%::*}
+
+every 2 ticks:
+	loop {st.fan.ids::*}:
+		set {_id} to loop-value
+		set {_base} to {st.fan::%{_id}%::base}
+		if {_base} is not set:
+			remove {_id} from {st.fan.ids::*}
+			delete {st.fan::%{_id}%::*}
+		else:
+			set {_active} to stEncasedFanActiveTicks({_id})
+			if {_active} > 0:
+				subtract 2 from {st.fan::%{_id}%::active}
+				if {st.fan::%{_id}%::active} < 0:
+					set {st.fan::%{_id}%::active} to 0
+			else:
+				set {st.fan::%{_id}%::flow} to 0
+
+every 10 ticks:
+	loop {st.fan.ids::*}:
+		set {_id} to loop-value
+		set {_pending} to {st.fan::%{_id}%::flow.pending}
+		if {_pending} is not set:
+			set {_pending} to 0
+		set {st.fan::%{_id}%::flow} to {_pending}
+		delete {st.fan::%{_id}%::flow.pending}
+
+
+every 4 ticks:
+	delete {_smeltCleanup::*}
+	loop {st.fan.smelt.ids::*}:
+		if {st.fan.smelt::%loop-value%::ttl} is not set:
+			add loop-value to {_smeltCleanup::*}
+		else:
+			subtract 4 from {st.fan.smelt::%loop-value%::ttl}
+			if {st.fan.smelt::%loop-value%::ttl} <= 0:
+				add loop-value to {_smeltCleanup::*}
+	loop {_smeltCleanup::*}:
+		stClearEncasedFanSmeltTracking(loop-value)
+	delete {_hotHeat::*}
+	delete {_hotEntity::*}
+	loop {st.fan.ids::*}:
+		set {_id} to loop-value
+		set {_base} to {st.fan::%{_id}%::base}
+		if {_base} is set:
+			stApplyEncasedFanCore({_id})
+			stRefreshEncasedFanPanels({_id})
+			set {_strength} to stEncasedFanStrength({_id})
+			if {_strength} > 0:
+				set {_side} to stEncasedFanOutputSide({_id})
+				set {_range} to stEncasedFanRange({_strength})
+				set {_velocity} to stEncasedFanParticleVelocity({_side}, {_strength})
+				set {_air} to stEncasedFanAirType({_id})
+				if {_air} is "normal":
+					stPushItemsWithEncasedFan({_id})
+				delete {_fanHeated::*}
+				loop {_range} times:
+					set {_distance} to loop-number
+					set {_pathBlock} to stEncasedFanPathBlock({_base}, {_side}, {_distance})
+					if stEncasedFanPathPassable({_pathBlock}) is false:
+						stop loop
+					set {_loc} to stEncasedFanBlowLocation({_id}, {_distance} - 1)
+					if {_air} is "hot":
+						loop dropped items in radius 0.85 around {_loc}:
+							set {_entityId} to "%uuid of loop-entity%"
+							if {_fanHeated::%{_entityId}%} is not true:
+								set {_fanHeated::%{_entityId}%} to true
+								if {_hotHeat::%{_entityId}%} is not set:
+									set {_hotHeat::%{_entityId}%} to 0
+								add {_strength} to {_hotHeat::%{_entityId}%}
+								set {_hotEntity::%{_entityId}%} to loop-entity
+					if {_air} is "wet":
+						set {_wetCount} to 2 + {_strength}
+						loop {_wetCount} times:
+							set {_dropLoc} to {_loc}
+							add random number between -0.18 and 0.18 to x-coordinate of {_dropLoc}
+							add random number between -0.18 and 0.18 to y-coordinate of {_dropLoc}
+							add random number between -0.18 and 0.18 to z-coordinate of {_dropLoc}
+							draw 1 splash particle at {_dropLoc}
+							draw 1 dripping water particle at {_dropLoc}
+					else if {_air} is "hot":
+						loop {_strength} times:
+							draw 1 flame particle with a velocity of {_velocity} at {_loc}
+						set {_smokeCount} to 1 + ({_strength} / 2)
+						loop {_smokeCount} times:
+							draw 1 smoke particle with a velocity of {_velocity} at {_loc}
+					else:
+						set {_cloudCount} to 2 + {_strength}
+						loop {_cloudCount} times:
+							draw 1 cloud particle with a velocity of {_velocity} at {_loc}
+	loop {_hotHeat::*}:
+		set {_entityId} to loop-index
+		set {_entity} to {_hotEntity::%{_entityId}%}
+		if {_entity} is set:
+			stHeatItemWithEncasedFan({_entity}, loop-value)
