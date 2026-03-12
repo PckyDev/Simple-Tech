@@ -1,11 +1,46 @@
 options:
 	st-prefix: &8[&6Simple Tech&8]&r
 
+function stHammerExcavationName() :: text:
+	return "Excavation"
+
+function stHammerEnchantRoman(level: number) :: text:
+	if {_level} is 2:
+		return "II"
+	return "I"
+
+function stHammerExcavationMarker(level: number) :: text:
+	return "sthenc:excavation:%{_level}%"
+
+function stHammerExcavationLevel(i: item) :: number:
+	if {_i} is not set:
+		return 0
+	set {_lore::*} to lore of {_i}
+	if size of {_lore::*} is 0:
+		return 0
+	loop {_lore::*}:
+		set {_line} to uncolored loop-value
+		if {_line} starts with "sthenc:excavation:":
+			replace first "sthenc:excavation:" with "" in {_line}
+			return {_line} parsed as number
+	return 0
+
+function stHammerApplyExcavationLore(i: item, level: number) :: item:
+	set {_result} to {_i}
+	delete {_lore::*}
+	set {_lore::*} to "&7Used to crush raw ores in an anvil." and "&7Not consumed during crushing."
+	if {_level} > 0:
+		add "&9%stHammerExcavationName()% %stHammerEnchantRoman({_level})%" to {_lore::*}
+	set {_lore::*} to {_lore::*} and "&8Tier 0 • Primitive Tech" and "&0st:hammer"
+	if {_level} > 0:
+		add "&0%stHammerExcavationMarker({_level})%" to {_lore::*}
+	set lore of {_result} to {_lore::*}
+	set {_result} to unbreakable {_result}
+	return {_result}
+
 function stHammer() :: item:
 	set {_item} to mace named "&6Hammer"
-	set lore of {_item} to "&7Used to crush raw ores in an anvil." and "&7Not consumed during crushing." and "&8Tier 0 • Primitive Tech" and "&0st:hammer"
-	set {_item} to unbreakable {_item}
-	return {_item}
+	return stHammerApplyExcavationLore({_item}, 0)
 
 function stIsHammer(i: item) :: boolean:
 	if {_i} is not set:
@@ -13,6 +48,357 @@ function stIsHammer(i: item) :: boolean:
 	if type of {_i} is not mace:
 		return false
 	return stHasId({_i}, "st:hammer")
+
+function stHammerEnchantBook(level: number) :: item:
+	set {_book} to enchanted book named "&dEnchanted Book"
+	set {_lore::*} to "&9%stHammerExcavationName()% %stHammerEnchantRoman({_level})%" and "&7A hammer enchantment book." and "&8Only applies to Hammers." and "&0st:hammer_book" and "&0%stHammerExcavationMarker({_level})%"
+	set lore of {_book} to {_lore::*}
+	return {_book}
+
+function stIsHammerEnchantBook(i: item) :: boolean:
+	if {_i} is not set:
+		return false
+	if type of {_i} is not enchanted book:
+		return false
+	return stHasId({_i}, "st:hammer_book")
+
+function stIsHammerEnchantTableItem(i: item) :: boolean:
+	if stIsHammer({_i}) is true:
+		return true
+	if type of {_i} is book:
+		return true
+	if type of {_i} is enchanted book:
+		return true
+	return false
+
+function stHammerEnchantTableLevel(i: item, cost: number) :: number:
+	set {_current} to stHammerExcavationLevel({_i})
+	if {_current} >= 2:
+		return 0
+	if {_current} >= 1:
+		return 2
+	if {_cost} >= 20:
+		return 2
+	return 1
+
+function stHammerEnchantButtonCost(button: number) :: number:
+	if {_button} <= 1:
+		return 1
+	if {_button} >= 3:
+		return 3
+	return 2
+
+function stConsumeHammerEnchantLapis(inv: inventory, amount: number):
+	if {_amount} <= 0:
+		stop
+	set {_lapis} to slot 1 of {_inv}
+	if {_lapis} is not lapis lazuli:
+		stop
+	set amount of {_lapis} to amount of {_lapis} - {_amount}
+	if amount of {_lapis} <= 0:
+		set slot 1 of {_inv} to air
+	else:
+		set slot 1 of {_inv} to {_lapis}
+
+function stHammerAnvilMergeLevel(leftLevel: number, rightLevel: number) :: number:
+	set {_result} to {_leftLevel}
+	if {_rightLevel} > {_result}:
+		set {_result} to {_rightLevel}
+	if {_leftLevel} > 0:
+		if {_leftLevel} is {_rightLevel}:
+			if {_leftLevel} < 2:
+				add 1 to {_result}
+	if {_result} > 2:
+		set {_result} to 2
+	return {_result}
+
+function stHammerAnvilResult(inv: inventory) :: item:
+	set {_left} to slot 0 of {_inv}
+	set {_right} to slot 1 of {_inv}
+	set {_leftLevel} to stHammerExcavationLevel({_left})
+	set {_rightLevel} to stHammerExcavationLevel({_right})
+	if stIsHammer({_left}) is true:
+		if stIsHammer({_right}) is true:
+			set {_resultLevel} to stHammerAnvilMergeLevel({_leftLevel}, {_rightLevel})
+			if {_resultLevel} > {_leftLevel}:
+				return stHammerApplyExcavationLore({_left}, {_resultLevel})
+		else:
+			if stIsHammerEnchantBook({_right}) is true:
+				set {_resultLevel} to stHammerAnvilMergeLevel({_leftLevel}, {_rightLevel})
+				if {_resultLevel} > {_leftLevel}:
+					return stHammerApplyExcavationLore({_left}, {_resultLevel})
+	if stIsHammer({_right}) is true:
+		if stIsHammerEnchantBook({_left}) is true:
+			set {_resultLevel} to stHammerAnvilMergeLevel({_rightLevel}, {_leftLevel})
+			if {_resultLevel} > {_rightLevel}:
+				return stHammerApplyExcavationLore({_right}, {_resultLevel})
+	if stIsHammerEnchantBook({_left}) is true:
+		if stIsHammerEnchantBook({_right}) is true:
+			set {_resultLevel} to stHammerAnvilMergeLevel({_leftLevel}, {_rightLevel})
+			if {_resultLevel} > {_leftLevel}:
+				return stHammerEnchantBook({_resultLevel})
+			if {_resultLevel} > {_rightLevel}:
+				return stHammerEnchantBook({_resultLevel})
+
+function stUpdateHammerAnvilResult(inv: inventory):
+	set {_result} to stHammerAnvilResult({_inv})
+	if {_result} is set:
+		if stIsPrimitiveProcessingResult(slot 2 of {_inv}) is false:
+			set slot 2 of {_inv} to {_result}
+		stop
+	set {_left} to slot 0 of {_inv}
+	set {_right} to slot 1 of {_inv}
+	if stIsPrimitiveProcessingResult(slot 2 of {_inv}) is true:
+		stop
+	if stIsHammer({_left}) is true:
+		set slot 2 of {_inv} to air
+		stop
+	if stIsHammer({_right}) is true:
+		set slot 2 of {_inv} to air
+		stop
+	if stIsHammerEnchantBook({_left}) is true:
+		set slot 2 of {_inv} to air
+		stop
+	if stIsHammerEnchantBook({_right}) is true:
+		set slot 2 of {_inv} to air
+
+function stHammerMiningTool() :: item:
+	return unbreakable diamond pickaxe
+
+function stHammerMiningPlaneAxis(p: player) :: text:
+	set {_pitch} to pitch of {_p}
+	if {_pitch} > 55:
+		return "y"
+	if {_pitch} < -55:
+		return "y"
+	set {_facing} to "%facing of {_p}%"
+	if {_facing} contains "north":
+		return "z"
+	if {_facing} contains "south":
+		return "z"
+	return "x"
+
+function stHammerOffsetBlock(b: block, axis: text, offsetA: number, offsetB: number) :: block:
+	set {_loc} to location of {_b}
+	if {_axis} is "y":
+		add {_offsetA} to x-coordinate of {_loc}
+		add {_offsetB} to z-coordinate of {_loc}
+	else if {_axis} is "z":
+		add {_offsetA} to x-coordinate of {_loc}
+		add {_offsetB} to y-coordinate of {_loc}
+	else:
+		add {_offsetA} to z-coordinate of {_loc}
+		add {_offsetB} to y-coordinate of {_loc}
+	return block at {_loc}
+
+function stHammerCanBreakExtraBlock(center: block, target: block) :: boolean:
+	if {_target} is air:
+		return false
+	if {_target} is water:
+		return false
+	if {_target} is lava block:
+		return false
+	if {_target} is bedrock:
+		return false
+	if {_target} is not solid:
+		return false
+	if stIsPlacedPress({_target}) is true:
+		return false
+	if stIsEncasedFanPart({_target}) is true:
+		return false
+	if stIsWaterWheelPart({_target}) is true:
+		return false
+	if stIsCablePolePart({_target}) is true:
+		return false
+	if stIsBeltPart({_target}) is true:
+		return false
+	return true
+
+function stBreakHammerOffset(b: block, axis: text, offsetA: number, offsetB: number, tool: item):
+	set {_extra} to stHammerOffsetBlock({_b}, {_axis}, {_offsetA}, {_offsetB})
+	if stHammerCanBreakExtraBlock({_b}, {_extra}) is true:
+		break {_extra} naturally using {_tool}
+
+function stHammerPreviewInRange(p: player, b: block) :: boolean:
+	if {_b} is not set:
+		return false
+	set {_eye} to eye location of {_p}
+	set {_center} to stHammerPreviewDisplayLocation({_b})
+	if distance between {_eye} and {_center} <= 4.75:
+		return true
+	return false
+
+function stHammerPreviewDisplayLocation(b: block) :: location:
+	set {_loc} to location of {_b}
+	# add 0.5 to x-coordinate of {_loc}
+	# add 0.5 to y-coordinate of {_loc}
+	# add 0.5 to z-coordinate of {_loc}
+	set yaw of {_loc} to 0
+	set pitch of {_loc} to 0
+	return {_loc}
+
+function stPrepareHammerPreviewDisplay(e: entity):
+	if {_e} is not set:
+		stop
+	set yaw of {_e} to 0
+	set pitch of {_e} to 0
+
+function stHammerPreviewGlowColor() :: color:
+	return aqua
+
+function stSpawnHammerPreviewSlotDisplay(b: block, viewer: player) :: entity:
+	set {_loc} to stHammerPreviewDisplayLocation({_b})
+	spawn a block display at {_loc}
+	set {_display} to last spawned entity
+	stPrepareHammerPreviewDisplay({_display})
+	set interpolation delay of {_display} to 0 ticks
+	set interpolation duration of {_display} to 2 ticks
+	set transformation translation of {_display} to vector from -0.49, -0.49, -0.49
+	set transformation scale of {_display} to vector from 0.98, 0.98, 0.98
+	set glowing of {_display} to true
+	set glow color override of {_display} to stHammerPreviewGlowColor()
+	set sky light override of {_display} to 15
+	set block light override of {_display} to 15
+	set block data of {_display} to block data of {_b}
+	hide {_display} from all players
+	reveal {_display} to {_viewer}
+	return {_display}
+
+function stClearHammerPreviewSlots(p: player):
+	set {_key} to "%uuid of {_p}%"
+	loop 9 times:
+		set {_display} to {st.hammer.preview::%{_key}%::slot::%loop-number%}
+		if {_display} is set:
+			kill {_display}
+	delete {st.hammer.preview::%{_key}%::slot::*}
+
+function stClearHammerPreview(p: player):
+	stClearHammerPreviewSlots({_p})
+	set {_key} to "%uuid of {_p}%"
+	delete {st.hammer.preview::%{_key}%::*}
+
+function stUpdateHammerPreviewSlot(p: player, slotIndex: number, b: block):
+	set {_key} to "%uuid of {_p}%"
+	set {_display} to {st.hammer.preview::%{_key}%::slot::%{_slotIndex}%}
+	if {_b} is not set:
+		if {_display} is set:
+			kill {_display}
+		delete {st.hammer.preview::%{_key}%::slot::%{_slotIndex}%}
+		stop
+	if stHammerCanBreakExtraBlock({_b}, {_b}) is false:
+		if {_display} is set:
+			kill {_display}
+		delete {st.hammer.preview::%{_key}%::slot::%{_slotIndex}%}
+		stop
+	if {_display} is not set:
+		set {_display} to stSpawnHammerPreviewSlotDisplay({_b}, {_p})
+		set {st.hammer.preview::%{_key}%::slot::%{_slotIndex}%} to {_display}
+	else if {_display} is not valid:
+		set {_display} to stSpawnHammerPreviewSlotDisplay({_b}, {_p})
+		set {st.hammer.preview::%{_key}%::slot::%{_slotIndex}%} to {_display}
+	else:
+		teleport {_display} to stHammerPreviewDisplayLocation({_b})
+		stPrepareHammerPreviewDisplay({_display})
+		set transformation translation of {_display} to vector from -0.475, -0.475, -0.475
+		set transformation scale of {_display} to vector from 0.95, 0.95, 0.95
+		set glow color override of {_display} to stHammerPreviewGlowColor()
+		set block data of {_display} to block data of {_b}
+
+function stShowHammerPreview(p: player, b: block):
+	set {_axis} to stHammerMiningPlaneAxis({_p})
+	set {_b1} to {_b}
+	set {_b2} to stHammerOffsetBlock({_b}, {_axis}, -1, -1)
+	set {_b3} to stHammerOffsetBlock({_b}, {_axis}, -1, 0)
+	set {_b4} to stHammerOffsetBlock({_b}, {_axis}, -1, 1)
+	set {_b5} to stHammerOffsetBlock({_b}, {_axis}, 0, -1)
+	set {_b6} to stHammerOffsetBlock({_b}, {_axis}, 0, 1)
+	set {_b7} to stHammerOffsetBlock({_b}, {_axis}, 1, -1)
+	set {_b8} to stHammerOffsetBlock({_b}, {_axis}, 1, 0)
+	set {_b9} to stHammerOffsetBlock({_b}, {_axis}, 1, 1)
+	stUpdateHammerPreviewSlot({_p}, 1, {_b1})
+	stUpdateHammerPreviewSlot({_p}, 2, {_b2})
+	stUpdateHammerPreviewSlot({_p}, 3, {_b3})
+	stUpdateHammerPreviewSlot({_p}, 4, {_b4})
+	stUpdateHammerPreviewSlot({_p}, 5, {_b5})
+	stUpdateHammerPreviewSlot({_p}, 6, {_b6})
+	stUpdateHammerPreviewSlot({_p}, 7, {_b7})
+	stUpdateHammerPreviewSlot({_p}, 8, {_b8})
+	stUpdateHammerPreviewSlot({_p}, 9, {_b9})
+
+function stHammerMiningDelay(b: block, level: number) :: timespan:
+	set {_type} to "%type of {_b}%"
+	set {_ticks} to 4 ticks
+	if {_type} contains "obsidian":
+		set {_ticks} to 18 ticks
+	else if {_type} contains "deepslate":
+		set {_ticks} to 8 ticks
+	else if {_type} contains "blackstone":
+		set {_ticks} to 8 ticks
+	else if {_type} contains "basalt":
+		set {_ticks} to 8 ticks
+	else if {_type} contains "ore":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "stone":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "cobblestone":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "granite":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "diorite":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "andesite":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "sandstone":
+		set {_ticks} to 5 ticks
+	else if {_type} contains "end_stone":
+		set {_ticks} to 5 ticks
+	if {_level} >= 2:
+		add 1 tick to {_ticks}
+	return {_ticks}
+
+function stStartHammerMining(p: player, b: block, level: number):
+	add 1 to {st.hammer.mining.token.next}
+	set {_token} to {st.hammer.mining.token.next}
+	set {_playerId} to "%uuid of {_p}%"
+	set {st.hammer.mining::%{_playerId}%::token} to {_token}
+	set {st.hammer.mining::%{_playerId}%::block} to stBlockId({_b})
+	set {_delay} to stHammerMiningDelay({_b}, {_level})
+	wait {_delay}
+	if {st.hammer.mining::%{_playerId}%::token} is not {_token}:
+		stop
+	delete {st.hammer.mining::%{_playerId}%::*}
+	if {_p} is not online:
+		stop
+	set {_tool} to {_p}'s tool
+	if stIsHammer({_tool}) is false:
+		stop
+	if stHammerExcavationLevel({_tool}) < {_level}:
+		stop
+	if {_b} is air:
+		stop
+	set {_target} to target block of {_p}
+	if {_target} is not set:
+		stop
+	if stBlockId({_target}) is not stBlockId({_b}):
+		stop
+	set {st.hammer.excavating::%{_playerId}%} to true
+	stBreakHammerMiningArea({_p}, {_b}, {_level})
+	delete {st.hammer.excavating::%{_playerId}%}
+
+function stBreakHammerMiningArea(p: player, b: block, level: number):
+	set {_tool} to stHammerMiningTool()
+	break {_b} naturally using {_tool}
+	if {_level} < 2:
+		stop
+	set {_axis} to stHammerMiningPlaneAxis({_p})
+	stBreakHammerOffset({_b}, {_axis}, -1, -1, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, -1, 0, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, -1, 1, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, 0, -1, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, 0, 1, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, 1, -1, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, 1, 0, {_tool})
+	stBreakHammerOffset({_b}, {_axis}, 1, 1, {_tool})
 
 function stSlotIsEmpty(inv: inventory, slotNumber: number) :: boolean:
 	if slot {_slotNumber} of {_inv} is air:
@@ -188,3 +574,118 @@ on damage:
 		if stIsHammer(attacker's tool) is true:
 			cancel event
 			send "{@st-prefix} &cThe hammer is a processing tool, not a weapon." to attacker
+
+on enchant prepare:
+	set {_item} to enchant item
+	if stIsHammerEnchantTableItem({_item}) is false:
+		stop
+	set {_current} to stHammerExcavationLevel({_item})
+	if {_current} >= 2:
+		delete 1st enchantment offer
+		delete 2nd enchantment offer
+		delete 3rd enchantment offer
+		stop
+	if {_current} >= 1:
+		set 1st enchantment offer to efficiency 2
+		set 2nd enchantment offer to efficiency 2
+		set 3rd enchantment offer to efficiency 2
+		set enchantment cost of 1st enchantment offer to 10
+		set enchantment cost of 2nd enchantment offer to 16
+		set enchantment cost of 3rd enchantment offer to 24
+		stop
+	set 1st enchantment offer to efficiency 1
+	set 2nd enchantment offer to efficiency 1
+	set 3rd enchantment offer to efficiency 2
+	set enchantment cost of 1st enchantment offer to 5
+	set enchantment cost of 2nd enchantment offer to 12
+	set enchantment cost of 3rd enchantment offer to 20
+
+on enchant:
+	set {_item} to enchant item
+	if stIsHammerEnchantTableItem({_item}) is false:
+		stop
+	cancel event
+	set {_button} to clicked enchantment button
+	set {_level} to stHammerEnchantTableLevel({_item}, enchanting cost)
+	if {_level} <= 0:
+		stop
+	set {_lapisCost} to stHammerEnchantButtonCost({_button})
+	if stIsHammer({_item}) is true:
+		set {_result} to stHammerApplyExcavationLore({_item}, {_level})
+	else:
+		set {_result} to stHammerEnchantBook({_level})
+	set enchant item to {_result}
+	set slot 0 of event-inventory to {_result}
+	if player's gamemode is not creative:
+		stConsumeHammerEnchantLapis(event-inventory, {_lapisCost})
+		remove {_lapisCost} from player's level
+
+on inventory click:
+	if type of event-inventory is not anvil inventory:
+		stop
+	if raw index of clicked slot is 2:
+		set {_result} to stHammerAnvilResult(event-inventory)
+		if {_result} is not set:
+			stop
+		cancel event
+		set slot 0 of event-inventory to air
+		set slot 1 of event-inventory to air
+		give {_result} to player
+		wait 1 tick
+		stUpdateProcessingResult(event-inventory)
+		stUpdateHammerAnvilResult(event-inventory)
+		stop
+	wait 1 tick
+	stUpdateHammerAnvilResult(event-inventory)
+
+on inventory drag:
+	if type of event-inventory is anvil inventory:
+		wait 1 tick
+		stUpdateHammerAnvilResult(event-inventory)
+
+every 2 ticks:
+	loop all players:
+		set {_tool} to loop-player's tool
+		if stIsHammer({_tool}) is false:
+			stClearHammerPreview(loop-player)
+		else:
+			set {_level} to stHammerExcavationLevel({_tool})
+			if {_level} < 2:
+				stClearHammerPreview(loop-player)
+			else:
+				set {_target} to target block of loop-player
+				if {_target} is not set:
+					stClearHammerPreview(loop-player)
+				else if stHammerCanBreakExtraBlock({_target}, {_target}) is false:
+					stClearHammerPreview(loop-player)
+				else if stHammerPreviewInRange(loop-player, {_target}) is false:
+					stClearHammerPreview(loop-player)
+				else:
+					stShowHammerPreview(loop-player, {_target})
+
+on block damage:
+	if player is not set:
+		stop
+	if {st.hammer.excavating::%uuid of player%} is true:
+		stop
+	set {_tool} to player's tool
+	if stIsHammer({_tool}) is false:
+		stop
+	set {_level} to stHammerExcavationLevel({_tool})
+	if {_level} <= 0:
+		stop
+	if stHammerCanBreakExtraBlock(event-block, event-block) is false:
+		stop
+	cancel event
+	set {_playerId} to "%uuid of player%"
+	if {st.hammer.mining::%{_playerId}%::block} is stBlockId(event-block):
+		stop
+	stStartHammerMining(player, event-block, {_level})
+
+on break:
+	if player is set:
+		delete {st.hammer.mining::%uuid of player%::*}
+		stClearHammerPreview(player)
+
+on quit:
+	stClearHammerPreview(player)
